@@ -41,20 +41,17 @@ def process_passport(file_path: Path) -> dict[str, Any]:
         return {"data": None, "confidence": 0.0, "errors": ["Could not load image"]}
 
     # Detect MRZ region
-    mrz_region = mrz_detector.detect(image)
+    mrz_region = mrz_detector.detect_with_fallback(image)
 
-    if mrz_region is not None:
-        # Preprocess MRZ region
+    # Try OCR on raw MRZ region first (often works better than preprocessed)
+    ocr_result = ocr_extractor.extract_mrz(mrz_region.image)
+    parse_result = passport_parser.parse(ocr_result.text, ocr_result.confidence)
+
+    # If raw image didn't work, try with preprocessing
+    if not parse_result.success:
         preprocessed = preprocessor.preprocess_for_mrz(mrz_region.image)
         ocr_result = ocr_extractor.extract_mrz(preprocessed)
-    else:
-        # Fallback: try OCR on full image (bottom portion)
-        fallback_region = mrz_detector.detect_with_fallback(image)
-        preprocessed = preprocessor.preprocess_for_mrz(fallback_region.image)
-        ocr_result = ocr_extractor.extract_mrz(preprocessed)
-
-    # Parse MRZ
-    parse_result = passport_parser.parse(ocr_result.text, ocr_result.confidence)
+        parse_result = passport_parser.parse(ocr_result.text, ocr_result.confidence)
 
     if parse_result.success and parse_result.data:
         return {
