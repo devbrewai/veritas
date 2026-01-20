@@ -20,8 +20,12 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE_MB: int = 10
     ALLOWED_EXTENSIONS: list[str] = ["jpg", "jpeg", "png", "pdf"]
 
-    # OCR
+    # OCR - Tesseract
     TESSERACT_CMD: str | None = None  # Use system default if None
+
+    # OCR - Google Vision API (fallback for better accuracy)
+    GOOGLE_CLOUD_API_KEY: str | None = None
+    GOOGLE_VISION_ENABLED: bool = False
 
     # API
     API_V1_PREFIX: str = "/v1"
