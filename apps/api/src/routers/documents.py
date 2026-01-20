@@ -1,5 +1,6 @@
 """Document upload and processing endpoints."""
 
+import logging
 import uuid
 from pathlib import Path
 from typing import Any
@@ -13,8 +14,10 @@ from src.config import get_settings
 from src.database import get_db
 from src.models.document import Document
 from src.schemas.document import DocumentResponse, DocumentUploadResponse
-from src.services.ocr import ImagePreprocessor, MRZDetector, OCRExtractor
+from src.services.ocr import GoogleVisionOCR, ImagePreprocessor, MRZDetector, OCRExtractor
 from src.services.parsers import PassportParser
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 settings = get_settings()
@@ -25,47 +28,129 @@ mrz_detector = MRZDetector()
 ocr_extractor = OCRExtractor()
 passport_parser = PassportParser()
 
+# Initialize Google Vision OCR (optional fallback)
+google_vision_ocr: GoogleVisionOCR | None = None
+if settings.GOOGLE_VISION_ENABLED:
+    google_vision_ocr = GoogleVisionOCR()
+    if google_vision_ocr.is_available:
+        logger.info("Google Vision OCR enabled as fallback")
+    else:
+        logger.warning("Google Vision enabled but API key not configured")
+        google_vision_ocr = None
+
+
+def _build_success_response(
+    parse_result: Any,
+    provider: str,
+) -> dict[str, Any]:
+    """Build success response from parse result.
+
+    Args:
+        parse_result: PassportExtractionResult from parser.
+        provider: Name of OCR provider that succeeded.
+
+    Returns:
+        Response dictionary with extracted data.
+    """
+    return {
+        "data": parse_result.data.model_dump(mode="json") if parse_result.data else None,
+        "confidence": parse_result.confidence,
+        "errors": parse_result.errors,
+        "warnings": parse_result.warnings,
+        "ocr_provider": provider,
+    }
+
 
 def process_passport(file_path: Path) -> dict[str, Any]:
     """Process passport image and extract MRZ data.
+
+    Uses a hybrid OCR strategy:
+    1. Tesseract on raw MRZ region (fast, free)
+    2. Tesseract on preprocessed MRZ region
+    3. Google Vision API fallback (if enabled, higher accuracy)
 
     Args:
         file_path: Path to the uploaded passport image.
 
     Returns:
-        Dictionary with extracted data, confidence, errors, and warnings.
+        Dictionary with extracted data, confidence, errors, warnings, and provider.
     """
     # Load image
     image = cv2.imread(str(file_path))
     if image is None:
-        return {"data": None, "confidence": 0.0, "errors": ["Could not load image"]}
+        return {
+            "data": None,
+            "confidence": 0.0,
+            "errors": ["Could not load image"],
+            "ocr_provider": "none",
+        }
 
     # Detect MRZ region
     mrz_region = mrz_detector.detect_with_fallback(image)
+    strategies_tried = []
+    last_result = None
 
-    # Try OCR on raw MRZ region first (often works better than preprocessed)
+    # Strategy 1: Tesseract on raw MRZ region (often works best for clear images)
+    logger.debug("Trying Tesseract on raw MRZ region")
     ocr_result = ocr_extractor.extract_mrz(mrz_region.image)
     parse_result = passport_parser.parse(ocr_result.text, ocr_result.confidence)
+    strategies_tried.append("tesseract_raw")
 
-    # If raw image didn't work, try with preprocessing
-    if not parse_result.success:
-        preprocessed = preprocessor.preprocess_for_mrz(mrz_region.image)
-        ocr_result = ocr_extractor.extract_mrz(preprocessed)
+    if parse_result.success:
+        logger.info("Passport extracted successfully with Tesseract (raw)")
+        return _build_success_response(parse_result, "tesseract")
+
+    last_result = parse_result
+
+    # Strategy 2: Tesseract on preprocessed MRZ region
+    logger.debug("Trying Tesseract on preprocessed MRZ region")
+    preprocessed = preprocessor.preprocess_for_mrz(mrz_region.image)
+    ocr_result = ocr_extractor.extract_mrz(preprocessed)
+    parse_result = passport_parser.parse(ocr_result.text, ocr_result.confidence)
+    strategies_tried.append("tesseract_preprocessed")
+
+    if parse_result.success:
+        logger.info("Passport extracted successfully with Tesseract (preprocessed)")
+        return _build_success_response(parse_result, "tesseract_preprocessed")
+
+    last_result = parse_result
+
+    # Strategy 3: Google Vision API (if enabled and available)
+    if google_vision_ocr is not None:
+        logger.debug("Trying Google Vision API fallback")
+
+        # Try on raw MRZ region first
+        ocr_result = google_vision_ocr.extract_mrz(mrz_region.image)
         parse_result = passport_parser.parse(ocr_result.text, ocr_result.confidence)
+        strategies_tried.append("google_vision_raw")
 
-    if parse_result.success and parse_result.data:
-        return {
-            "data": parse_result.data.model_dump(mode="json"),
-            "confidence": parse_result.confidence,
-            "errors": parse_result.errors,
-            "warnings": parse_result.warnings,
-        }
+        if parse_result.success:
+            logger.info("Passport extracted successfully with Google Vision")
+            return _build_success_response(parse_result, "google_vision")
 
+        last_result = parse_result
+
+        # Try on bottom portion of full image (different crop)
+        h, w = image.shape[:2]
+        bottom_region = image[int(h * 0.65):h, 0:w]
+        ocr_result = google_vision_ocr.extract_mrz(bottom_region)
+        parse_result = passport_parser.parse(ocr_result.text, ocr_result.confidence)
+        strategies_tried.append("google_vision_bottom")
+
+        if parse_result.success:
+            logger.info("Passport extracted successfully with Google Vision (bottom crop)")
+            return _build_success_response(parse_result, "google_vision")
+
+        last_result = parse_result
+
+    # All strategies failed
+    logger.warning(f"All OCR strategies failed. Tried: {strategies_tried}")
     return {
         "data": None,
-        "confidence": parse_result.confidence,
-        "errors": parse_result.errors,
-        "warnings": parse_result.warnings,
+        "confidence": last_result.confidence if last_result else 0.0,
+        "errors": last_result.errors if last_result else ["All OCR strategies failed"],
+        "warnings": [f"Tried strategies: {', '.join(strategies_tried)}"],
+        "ocr_provider": "none",
     }
 
 
