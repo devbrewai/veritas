@@ -116,9 +116,10 @@ class MRZDetector:
             y_position_ratio = y / h
 
             if width_ratio > 0.7 and y_position_ratio > 0.5:
-                # Add padding (3% of image dimensions)
+                # Add padding - more vertical padding to capture both MRZ lines
+                # MRZ has 2 lines, detection often only finds one
                 pad_x = int(w * 0.03)
-                pad_y = int(h * 0.03)
+                pad_y = int(h * 0.08)  # 8% vertical padding to capture both lines
 
                 x = max(0, x - pad_x)
                 y = max(0, y - pad_y)
@@ -142,7 +143,7 @@ class MRZDetector:
             width_ratio = cw / w
             if width_ratio > 0.5:
                 pad_x = int(w * 0.03)
-                pad_y = int(h * 0.03)
+                pad_y = int(h * 0.08)
 
                 x = max(0, x - pad_x)
                 y = max(0, y - pad_y)
