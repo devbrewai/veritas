@@ -171,7 +171,54 @@ class ImagePreprocessor:
 
         return binary
 
-    def preprocess_for_mrz(self, image: np.ndarray) -> np.ndarray:
+    @staticmethod
+    def upscale_if_needed(
+        image: np.ndarray,
+        min_height: int = 100,
+        target_height: int = 200,
+    ) -> np.ndarray:
+        """Upscale small images for better OCR accuracy.
+
+        Args:
+            image: Input image.
+            min_height: Minimum height threshold to trigger upscaling.
+            target_height: Target height after upscaling.
+
+        Returns:
+            Upscaled image if needed, otherwise original.
+        """
+        h, w = image.shape[:2]
+        if h >= min_height:
+            return image
+
+        scale = target_height / h
+        new_w = int(w * scale)
+        new_h = int(h * scale)
+
+        return cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
+
+    @staticmethod
+    def sharpen(image: np.ndarray, strength: float = 1.0) -> np.ndarray:
+        """Apply sharpening filter to enhance text edges.
+
+        Args:
+            image: Input grayscale image.
+            strength: Sharpening strength (1.0 = normal, higher = more).
+
+        Returns:
+            Sharpened image.
+        """
+        # Unsharp masking: sharpen = original + strength * (original - blurred)
+        blurred = cv2.GaussianBlur(image, (0, 0), 3)
+        sharpened = cv2.addWeighted(image, 1.0 + strength, blurred, -strength, 0)
+        return sharpened
+
+    def preprocess_for_mrz(
+        self,
+        image: np.ndarray,
+        upscale: bool = True,
+        sharpen: bool = True,
+    ) -> np.ndarray:
         """Preprocessing specifically optimized for MRZ region.
 
         MRZ uses OCR-B font which is designed for machine reading,
@@ -179,11 +226,21 @@ class ImagePreprocessor:
 
         Args:
             image: Input image (BGR or grayscale).
+            upscale: Whether to upscale small images.
+            sharpen: Whether to apply sharpening.
 
         Returns:
             Preprocessed image optimized for MRZ OCR.
         """
+        # Upscale small MRZ regions for better OCR
+        if upscale:
+            image = self.upscale_if_needed(image, min_height=150, target_height=300)
+
         gray = self.to_grayscale(image)
+
+        # Apply sharpening to enhance character edges
+        if sharpen:
+            gray = self.sharpen(gray, strength=0.5)
 
         # Lighter denoising for MRZ
         denoised = cv2.GaussianBlur(gray, (3, 3), 0)
