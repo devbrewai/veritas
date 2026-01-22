@@ -19,12 +19,14 @@
 ## Problem Statement
 
 Cross-border payments companies spend $50-200 per customer on manual KYC review. Compliance teams manually:
+
 - Extract data from passports, utility bills, business documents (OCR or typing)
 - Screen names against OFAC and sanctions lists (copy-paste into databases)
 - Search for adverse media mentions (Google search + manual reading)
 - Assign risk tiers based on gut feel and checklists (subjective, inconsistent)
 
 **Current State:**
+
 - 24-72 hours per customer onboarding
 - $150 average cost per customer (compliance team time)
 - Bottlenecks at 100+ applications per day
@@ -32,6 +34,7 @@ Cross-border payments companies spend $50-200 per customer on manual KYC review.
 - Scales linearly with volume (hire more people = only solution)
 
 **Desired State:**
+
 - 4-10 seconds per customer onboarding (automated)
 - $45 average cost per customer (65% reduction)
 - Handles 1000+ applications per day
@@ -51,6 +54,7 @@ Veritas automates the entire KYC pipeline:
 5. **API & Dashboard** - RESTful API for integration, self-service UI for pilots
 
 **Key Differentiation:**
+
 - All-in-one KYC pipeline (competitors sell point solutions)
 - Explainable risk tiers (not black box scores)
 - Self-service pilot (prospects test with their own documents)
@@ -63,12 +67,14 @@ Veritas automates the entire KYC pipeline:
 ### Tech Stack
 
 **Backend:**
+
 - Python 3.11+
 - FastAPI for API server
 - PostgreSQL for document metadata, extraction results, audit logs
 - Redis for caching sanctions lists and session data
 
 **Document Processing:**
+
 - Tesseract OCR for text extraction (free, open-source)
 - Alternative: Google Vision API (paid, higher accuracy for poor scans)
 - pytesseract for Python integration
@@ -76,6 +82,7 @@ Veritas automates the entire KYC pipeline:
 - Pillow for image preprocessing
 
 **Sanctions Screening (Reuse from Sentinel):**
+
 - OFAC SDN list (JSON download)
 - EU Consolidated List
 - UN Sanctions List
@@ -83,23 +90,27 @@ Veritas automates the entire KYC pipeline:
 - Phonetic matching with metaphone
 
 **Adverse Media:**
+
 - GDELT API for news mentions (free tier: 250 queries/day)
 - Alternative: NewsAPI (free tier: 100 requests/day)
 - Keyword search: "{full_name}" AND (fraud OR scam OR money laundering OR sanctions OR terrorist)
 - Sentiment analysis: TextBlob or VADER (simple, no ML needed)
 
 **Risk Scoring:**
+
 - LightGBM or XGBoost for risk classification
 - Features: document quality score, sanctions match confidence, adverse media count/sentiment, country risk, business type risk
 - Calibrated probability output (Platt scaling)
 - SHAP values for explainability
 
 **Authentication & Multi-Tenancy:**
+
 - Better Auth (email/password, session management)
 - Multi-tenant schema: user_id foreign key on all tables
 - Row-level security in queries
 
 **Frontend:**
+
 - Next.js 14 (App Router)
 - Tailwind CSS
 - Shadcn/UI components (form, card, badge, table)
@@ -107,6 +118,7 @@ Veritas automates the entire KYC pipeline:
 - React Dropzone for drag-and-drop file upload
 
 **Deployment:**
+
 - Backend: Render.com (Python web service)
 - Frontend: Vercel
 - Database: Render PostgreSQL (free tier: 1GB)
@@ -118,6 +130,7 @@ Veritas automates the entire KYC pipeline:
 ## Data Schema
 
 ### Users Table (Better Auth)
+
 ```sql
 CREATE TABLE users (
     id UUID PRIMARY KEY,
@@ -130,6 +143,7 @@ CREATE TABLE users (
 ```
 
 ### Documents Table
+
 ```sql
 CREATE TABLE documents (
     id UUID PRIMARY KEY,
@@ -150,6 +164,7 @@ CREATE INDEX idx_customer_documents ON documents(user_id, customer_id);
 ```
 
 ### Screening Results Table
+
 ```sql
 CREATE TABLE screening_results (
     id UUID PRIMARY KEY,
@@ -173,6 +188,7 @@ CREATE INDEX idx_user_screening ON screening_results(user_id, screened_at DESC);
 ```
 
 ### Sanctions Lists (Redis Cache)
+
 ```
 Key: sanctions:ofac:{name_hash}
 Value: {
@@ -189,12 +205,15 @@ TTL: 86400 (24 hours, refresh daily)
 ## API Specification
 
 ### Base URL
+
 ```
 https://veritas-api.onrender.com/v1
 ```
 
 ### Authentication
-All endpoints (except /auth/*) require Bearer token:
+
+All endpoints (except /auth/\*) require Bearer token:
+
 ```http
 Authorization: Bearer <jwt_token>
 ```
@@ -202,6 +221,7 @@ Authorization: Bearer <jwt_token>
 ### Endpoints
 
 #### 1. Register / Login
+
 ```http
 POST /auth/register
 Content-Type: application/json
@@ -241,6 +261,7 @@ Response (200 OK):
 ```
 
 #### 2. Upload Document
+
 ```http
 POST /documents/upload
 Authorization: Bearer <token>
@@ -262,6 +283,7 @@ Response (202 Accepted):
 ```
 
 #### 3. Get KYC Results
+
 ```http
 GET /kyc/{customer_id}
 Authorization: Bearer <token>
@@ -335,6 +357,7 @@ Response (200 OK):
 ```
 
 #### 4. Batch KYC Processing
+
 ```http
 POST /kyc/batch
 Authorization: Bearer <token>
@@ -364,6 +387,7 @@ Response (202 Accepted):
 ```
 
 #### 5. Get User Statistics
+
 ```http
 GET /users/me/stats
 Authorization: Bearer <token>
@@ -390,22 +414,27 @@ Response (200 OK):
 ## Features & Implementation Timeline
 
 ### Day 1: Project Setup & Document Extraction
+
 **Tasks:**
-- [ ] Initialize monorepo structure (apps/api, apps/web, packages/shared)
-- [ ] Set up FastAPI backend with PostgreSQL
-- [ ] Implement Tesseract OCR pipeline
-- [ ] Build passport parser:
+
+- [x] Initialize monorepo structure (apps/api, apps/web, packages/shared)
+- [x] Set up FastAPI backend with PostgreSQL
+- [x] Implement Tesseract OCR pipeline
+- [x] Build passport parser:
   - Extract: full_name, date_of_birth, passport_number, nationality, issue_date, expiry_date
   - Handle common passport formats (MRZ - Machine Readable Zone)
-- [ ] Store extracted data in documents table
-- [ ] Test with sample passport images
+- [x] Store extracted data in documents table
+- [x] Test with sample passport images
 
 **Deliverables:**
+
 - Working OCR pipeline
 - Passport data extraction with >90% accuracy on clear scans
 
 ### Day 2: More Document Types + Data Models
+
 **Tasks:**
+
 - [ ] Add utility bill parser:
   - Extract: name, address, bill_date, utility_provider
   - Handle PDF and image formats
@@ -416,11 +445,14 @@ Response (200 OK):
 - [ ] Handle errors gracefully (poor quality scans, unsupported formats)
 
 **Deliverables:**
+
 - Multi-document type support
 - Robust error handling
 
 ### Day 3: Sanctions Screening (Reuse Sentinel)
+
 **Tasks:**
+
 - [ ] **Copy sanctions screening engine from Sentinel**
   - `packages/sanctions/loader.py` - OFAC/EU/UN list downloader
   - `packages/sanctions/matcher.py` - Fuzzy matching engine
@@ -431,11 +463,14 @@ Response (200 OK):
 - [ ] Return top match with confidence score (0-1)
 
 **Deliverables:**
+
 - Sanctions screening integrated (reusing Sentinel code)
 - <2 second screening time
 
 ### Day 4: Adverse Media + Risk Model Training
+
 **Tasks:**
+
 - [ ] GDELT API integration:
   - Search query: "{full_name}" AND (fraud OR scam OR "money laundering" OR sanctions)
   - Parse results, extract article titles, URLs, dates
@@ -450,17 +485,21 @@ Response (200 OK):
 - [ ] Generate SHAP explanations (top 5 contributing features)
 
 **Deliverables:**
+
 - Adverse media scanning working
 - Risk model trained and calibrated
 - Explainable risk tiers
 
 ### Day 5: Better Auth + Multi-Tenancy
+
 **Tasks:**
+
 - [ ] Install Better Auth (`npm install better-auth`)
 - [ ] Configure Better Auth with Postgres:
+
   ```typescript
-  import { betterAuth } from "better-auth"
-  
+  import { betterAuth } from "better-auth";
+
   export const auth = betterAuth({
     database: {
       provider: "postgres",
@@ -469,8 +508,9 @@ Response (200 OK):
     emailAndPassword: {
       enabled: true,
     },
-  })
+  });
   ```
+
 - [ ] Create users table (Better Auth auto-creates schema)
 - [ ] Implement registration endpoint (/auth/register)
 - [ ] Implement login endpoint (/auth/login)
@@ -482,12 +522,15 @@ Response (200 OK):
 - [ ] Test multi-tenant data isolation (create 2 users, verify separation)
 
 **Deliverables:**
+
 - Working auth system
 - Multi-tenant data isolation
 - Protected API endpoints
 
 ### Day 6: API Endpoints + Background Processing
+
 **Tasks:**
+
 - [ ] Document upload endpoint (/documents/upload)
   - Store file in local storage or S3
   - Create database record
@@ -504,12 +547,15 @@ Response (200 OK):
 - [ ] API documentation (auto-generated Swagger UI)
 
 **Deliverables:**
+
 - Complete API with all endpoints
 - Async processing for scalability
 - API docs at /docs
 
 ### Day 7: Demo UI
+
 **Tasks:**
+
 - [ ] Next.js setup with Tailwind CSS
 - [ ] Login/Register pages (Better Auth client)
 - [ ] Protected dashboard route
@@ -536,6 +582,7 @@ Response (200 OK):
 - [ ] Responsive design (mobile-friendly)
 
 **Deliverables:**
+
 - Self-service demo UI
 - Professional appearance
 - Mobile responsive
@@ -545,6 +592,7 @@ Response (200 OK):
 ## Acceptance Criteria
 
 ### Functional Requirements
+
 - [ ] Process passport in <10 seconds (p95)
 - [ ] OCR accuracy >85% on clear documents (90%+ target)
 - [ ] Sanctions screening returns results in <3 seconds
@@ -555,6 +603,7 @@ Response (200 OK):
 - [ ] Auth system working (register, login, protected routes)
 
 ### Non-Functional Requirements
+
 - [ ] Support 50 concurrent document uploads (free tier limit)
 - [ ] Handle PDF, JPG, PNG, HEIC formats
 - [ ] Graceful error handling for poor quality scans (request re-upload)
@@ -566,6 +615,7 @@ Response (200 OK):
 - [ ] API uptime >99% during demo period
 
 ### Security Requirements
+
 - [ ] Passwords hashed (bcrypt, handled by Better Auth)
 - [ ] JWT tokens with expiration (7 days)
 - [ ] Row-level security (all queries filter by user_id)
@@ -578,19 +628,23 @@ Response (200 OK):
 ## Demo Script (3 Minutes)
 
 ### Minute 1: The Problem (0:00-1:00)
+
 **Narration:**
 "Cross-border payments companies spend $50 to $200 per customer on manual KYC review. Compliance teams manually extract data from passports, screen sanctions lists, and search for adverse media. This takes 24 to 72 hours per customer and creates massive bottlenecks."
 
 **Visuals:**
+
 - Screenshot of manual KYC checklist (spreadsheet)
 - Timeline graphic: Application → Manual Review → 48 hours → Approval
 - Cost breakdown: 2 hours @ $75/hr = $150 per customer
 
 ### Minute 2: The Solution (1:00-2:30)
+
 **Narration:**
 "Veritas automates the entire KYC pipeline. Watch as I upload a passport and utility bill."
 
 **Visuals:**
+
 - Log into Veritas dashboard
 - Drag-and-drop passport image
 - Click "Process Document"
@@ -607,15 +661,18 @@ Response (200 OK):
 "The system extracted passport data in 2 seconds, screened sanctions lists in 1 second, checked adverse media in 1 second, and assigned a risk tier in under 4 seconds total. The ML model explains exactly why this customer is low risk."
 
 **Visuals:**
+
 - Risk reasons panel showing feature contributions
 - Sanctions check green checkmark
 - Total processing time: 4.2 seconds
 
 ### Minute 3: The Results (2:30-3:00)
+
 **Narration:**
 "Veritas reduces KYC time from 48 hours to 4 seconds—that's 95% faster. Cost drops from $150 to $45 per customer—65% cheaper. And every customer gets consistent risk scoring, not gut feel."
 
 **Visuals:**
+
 - Comparison table:
   - Manual: 48 hrs, $150, inconsistent
   - Veritas: 4 sec, $45, ML-based consistency
@@ -639,6 +696,7 @@ Cross-border payments companies spend $50-200 per customer on manual KYC review,
 Veritas automates document extraction, sanctions screening, adverse media scanning, and risk scoring in under 10 seconds.
 
 **The Tech:**
+
 - OCR + parsing for passports, IDs, utility bills, business documents
 - Sanctions screening against OFAC, EU, UN lists (reused from Sentinel)
 - Adverse media detection via GDELT and NewsAPI
@@ -646,12 +704,14 @@ Veritas automates document extraction, sanctions screening, adverse media scanni
 - Self-service pilot UI with Better Auth
 
 **The Results:**
+
 - 95% faster: 48 hours → 4 seconds
 - 65% cheaper: $150 → $45 per customer
 - 100% coverage: Every customer screened, zero manual reviews
 - Consistent: ML-based risk scoring, not gut feel
 
 **The Stack:**
+
 - Python, FastAPI, PostgreSQL, Redis
 - Tesseract OCR, LightGBM, Better Auth
 - Deployed on Render + Vercel
@@ -666,6 +726,7 @@ Log in and upload 10-20 of your recent KYC applications. Process them through Ve
 ## Success Metrics for Pilots
 
 ### Track During Pilot (2-3 weeks)
+
 - Documents processed (target: 20-50 per pilot)
 - Average processing time (target: <10 seconds)
 - OCR accuracy rate (target: >85%)
@@ -675,23 +736,25 @@ Log in and upload 10-20 of your recent KYC applications. Process them through Ve
 - Cost saved vs manual process (dollars)
 
 ### Target for Testimonial
+
 - **Time reduction:** >50% (48 hrs → <24 hrs minimum, ideally <1 hr)
 - **Cost reduction:** >60% ($150 → <$60 per customer)
 - **Accuracy:** <5% false positive rate on sanctions screening
 - **Satisfaction:** 8+/10 from compliance team
 
 ### Example Testimonial
+
 ```
-"Our compliance team was drowning in manual KYC reviews—every customer 
+"Our compliance team was drowning in manual KYC reviews—every customer
 took 48 hours to onboard, costing us $150 in team time.
 
-We piloted Veritas and immediately saw our review time drop to under 
-10 seconds per customer. The document extraction was 95% accurate, 
-and the risk scoring gave us confidence to approve low-risk customers 
+We piloted Veritas and immediately saw our review time drop to under
+10 seconds per customer. The document extraction was 95% accurate,
+and the risk scoring gave us confidence to approve low-risk customers
 automatically.
 
-This freed up 30 hours per week for our compliance team and cut our 
-cost per customer by 70%. We're now onboarding 10x more customers 
+This freed up 30 hours per week for our compliance team and cut our
+cost per customer by 70%. We're now onboarding 10x more customers
 with the same team size."
 
 — Maria Rodriguez, Head of Compliance at [Company]
@@ -702,6 +765,7 @@ with the same team size."
 ## Deployment Checklist
 
 ### Backend (Render)
+
 - [ ] Create Render account (render.com)
 - [ ] Connect GitHub repo (veritas-api)
 - [ ] Create Web Service:
@@ -728,6 +792,7 @@ with the same team size."
 - [ ] Deploy and test /health endpoint
 
 ### Frontend (Vercel)
+
 - [ ] Create Vercel account (vercel.com)
 - [ ] Connect GitHub repo (veritas-ui)
 - [ ] Configure project:
@@ -744,6 +809,7 @@ with the same team size."
 - [ ] Add custom domain: veritas.devbrew.ai
 
 ### Monitoring
+
 - [ ] UptimeRobot (free tier):
   - Monitor /health endpoint
   - Ping every 5 minutes (keeps Render warm)
@@ -760,12 +826,14 @@ with the same team size."
 ## Reusable Components (For Future Projects)
 
 ### From Sentinel to Veritas (Already Reused)
+
 - ✅ Sanctions screening engine
 - ✅ Redis caching patterns
 - ✅ API error handling
 - ✅ FastAPI project structure
 
 ### From Veritas to Meridian (To Be Reused)
+
 - Better Auth setup and configuration
 - Multi-tenant data schema patterns
 - Protected route middleware
@@ -776,20 +844,21 @@ with the same team size."
 
 ## Risk Mitigation
 
-| Risk | Impact | Mitigation |
-|------|--------|-----------|
-| OCR fails on poor quality scans | High | Image preprocessing, quality check, request re-upload with instructions |
-| Sanctions lists out of date | Medium | Daily automated refresh, version control lists, alert on stale data |
-| Adverse media API rate limits hit | Medium | Cache results (7 days), use multiple sources (GDELT + NewsAPI), batch requests |
-| False positives on common names (John Smith) | High | Add middle name + DOB matching, country filters, manual review workflow for edge cases |
-| Multi-tenant data leak | Critical | Comprehensive testing, automated checks in CI/CD, row-level security validation |
-| Auth system vulnerability | Critical | Use Better Auth (battle-tested), regular security audits, HTTPS only |
+| Risk                                         | Impact   | Mitigation                                                                             |
+| -------------------------------------------- | -------- | -------------------------------------------------------------------------------------- |
+| OCR fails on poor quality scans              | High     | Image preprocessing, quality check, request re-upload with instructions                |
+| Sanctions lists out of date                  | Medium   | Daily automated refresh, version control lists, alert on stale data                    |
+| Adverse media API rate limits hit            | Medium   | Cache results (7 days), use multiple sources (GDELT + NewsAPI), batch requests         |
+| False positives on common names (John Smith) | High     | Add middle name + DOB matching, country filters, manual review workflow for edge cases |
+| Multi-tenant data leak                       | Critical | Comprehensive testing, automated checks in CI/CD, row-level security validation        |
+| Auth system vulnerability                    | Critical | Use Better Auth (battle-tested), regular security audits, HTTPS only                   |
 
 ---
 
 ## Tech Debt & Future Enhancements
 
 ### Known Limitations (Document for Pilots)
+
 - OCR optimized for English documents (limited multi-language support)
 - Adverse media search is English-only
 - Risk model trained on synthetic data (not real customer patterns)
@@ -797,6 +866,7 @@ with the same team size."
 - Free tier limits: 100 documents/month per pilot (Render + API limits)
 
 ### Future Enhancements (Post-Testimonials)
+
 - Multi-language OCR (support Spanish, French, Arabic documents)
 - Enhanced adverse media: Bloomberg, LexisNexis integration (paid sources)
 - Custom risk models per client (trained on their specific risk patterns)
@@ -811,21 +881,25 @@ with the same team size."
 ### Target Companies (26 Best Fits)
 
 **B2C Remittance (High Priority):**
+
 - NALA, Chipper Cash, LemFi, Sendwave, Remitly, Afriex, Felix Pago, Taptap Send
 - Pain: High KYC volume (1000s of customers/month), manual bottleneck
 - Pitch: "Cut your onboarding time from 48 hrs to 4 seconds, handle 10x volume with same team"
 
 **B2B Payments:**
+
 - Papaya Global, Jeeves, Airwallex, Nium, Tazapay, Aspire
 - Pain: B2B onboarding friction (business documents, complex verification)
 - Pitch: "Automate business document extraction, speed up merchant onboarding by 90%"
 
 **Infrastructure/API:**
+
 - Routefusion, Palla, Grey, Grain (if they onboard customers directly)
 - Pain: Compliance overhead for platform customers
 - Pitch: "Offer embedded KYC to your customers, white-label our API"
 
 ### Email Template
+
 ```
 Subject: [Company] - KYC automation pilot offer
 
@@ -833,11 +907,11 @@ Hey [Name],
 
 Saw [Company] just [recent news/funding/expansion]. Congrats.
 
-At [estimated volume] customers per month, your compliance team is 
-probably doing 100+ hours of manual KYC reviews. That's a $15K+/month 
+At [estimated volume] customers per month, your compliance team is
+probably doing 100+ hours of manual KYC reviews. That's a $15K+/month
 bottleneck.
 
-I built Veritas, a KYC automation system for cross-border payments. 
+I built Veritas, a KYC automation system for cross-border payments.
 Here's a 3-min demo: [link to veritas.devbrew.ai]
 
 For [Company] specifically:
@@ -845,8 +919,8 @@ For [Company] specifically:
 - Sanctions screening across [jurisdictions]
 - Risk scoring that cuts review time from 48 hrs to <10 seconds
 
-The pilot: I'll set up a private account. Upload 10-20 recent applications, 
-see the side-by-side comparison. If we cut your time by 50%+, you give 
+The pilot: I'll set up a private account. Upload 10-20 recent applications,
+see the side-by-side comparison. If we cut your time by 50%+, you give
 us a testimonial.
 
 Quick call this week to get you set up?
@@ -858,6 +932,7 @@ P.S. Here's the login: [custom link with temp password]
 ```
 
 ### Follow-Up Sequence
+
 **Day 3:** "Hey [Name], did you get a chance to try Veritas? Any questions?"  
 **Day 7:** "Sharing a case study on KYC automation ROI: [link]. Thought you'd find it relevant."  
 **Day 14:** "Last ping - still interested in cutting your KYC time by 90%? I have 2 pilot slots left this month."
@@ -875,6 +950,7 @@ P.S. Here's the login: [custom link with temp password]
 **Day 7:** Demo UI + polish
 
 **Post-Build (Same Day):**
+
 - Deploy to Render + Vercel (2 hours)
 - Record demo video (1.5 hours)
 - Write one-pager (1 hour)
@@ -889,11 +965,13 @@ P.S. Here's the login: [custom link with temp password]
 ## The Bottom Line
 
 **Veritas solves a universal pain point:**
+
 - 100% of cross-border companies need KYC
 - Current process is manual, expensive, slow
 - Clear ROI: 95% faster, 65% cheaper
 
 **Why Veritas converts at 60-70%:**
+
 - Self-service pilot (low friction)
 - "Log in and test with your own documents" (tangible proof)
 - Regulatory requirement (must-have, not nice-to-have)
