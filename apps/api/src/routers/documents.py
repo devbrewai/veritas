@@ -14,8 +14,15 @@ from src.config import get_settings
 from src.database import get_db
 from src.models.document import Document
 from src.schemas.document import DocumentResponse, DocumentUploadResponse
-from src.services.ocr import GoogleVisionOCR, ImagePreprocessor, MRZDetector, OCRExtractor
-from src.services.parsers import PassportParser
+from src.services.ocr import (
+    DocumentQualityChecker,
+    GoogleVisionOCR,
+    ImagePreprocessor,
+    MRZDetector,
+    OCRExtractor,
+    PDFHandler,
+)
+from src.services.parsers import BusinessDocumentParser, PassportParser, UtilityBillParser
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +33,13 @@ settings = get_settings()
 preprocessor = ImagePreprocessor()
 mrz_detector = MRZDetector()
 ocr_extractor = OCRExtractor()
+pdf_handler = PDFHandler()
+quality_checker = DocumentQualityChecker()
+
+# Initialize parsers
 passport_parser = PassportParser()
+utility_bill_parser = UtilityBillParser()
+business_doc_parser = BusinessDocumentParser()
 
 # Initialize Google Vision OCR (optional fallback)
 google_vision_ocr: GoogleVisionOCR | None = None
@@ -154,6 +167,197 @@ def process_passport(file_path: Path) -> dict[str, Any]:
     }
 
 
+def _load_image(file_path: Path) -> tuple[Any, str | None]:
+    """Load image from file path, handling PDF conversion.
+
+    Args:
+        file_path: Path to the image or PDF file.
+
+    Returns:
+        Tuple of (image as numpy array, error message if failed).
+    """
+    if pdf_handler.is_pdf(file_path):
+        image = pdf_handler.get_first_page(file_path)
+        if image is None:
+            return None, "Could not read PDF file"
+        return image, None
+
+    image = cv2.imread(str(file_path))
+    if image is None:
+        return None, "Could not load image"
+    return image, None
+
+
+def process_utility_bill(file_path: Path) -> dict[str, Any]:
+    """Process utility bill image/PDF and extract data.
+
+    Uses full-page OCR with regex-based field extraction.
+
+    Args:
+        file_path: Path to the uploaded utility bill.
+
+    Returns:
+        Dictionary with extracted data, confidence, errors, warnings, and provider.
+    """
+    # Load image (handle PDF)
+    image, error = _load_image(file_path)
+    if error:
+        return {
+            "data": None,
+            "confidence": 0.0,
+            "errors": [error],
+            "ocr_provider": "none",
+        }
+
+    # Check image quality
+    quality = quality_checker.check_quality(image)
+    quality_warnings = []
+    if not quality["is_acceptable"]:
+        quality_warnings = quality["suggestions"]
+
+    strategies_tried = []
+    last_result = None
+
+    # Strategy 1: Tesseract on preprocessed full page
+    logger.debug("Trying Tesseract on preprocessed image")
+    preprocessed = preprocessor.preprocess_for_ocr(image)
+    ocr_result = ocr_extractor.extract_document_text(preprocessed)
+    parse_result = utility_bill_parser.parse(ocr_result.text, ocr_result.confidence)
+    strategies_tried.append("tesseract_preprocessed")
+
+    if parse_result.success:
+        logger.info("Utility bill extracted successfully with Tesseract (preprocessed)")
+        result = _build_success_response(parse_result, "tesseract")
+        result["warnings"] = result.get("warnings", []) + quality_warnings
+        return result
+
+    last_result = parse_result
+
+    # Strategy 2: Tesseract on raw image
+    logger.debug("Trying Tesseract on raw image")
+    ocr_result = ocr_extractor.extract_document_text(image)
+    parse_result = utility_bill_parser.parse(ocr_result.text, ocr_result.confidence)
+    strategies_tried.append("tesseract_raw")
+
+    if parse_result.success:
+        logger.info("Utility bill extracted successfully with Tesseract (raw)")
+        result = _build_success_response(parse_result, "tesseract")
+        result["warnings"] = result.get("warnings", []) + quality_warnings
+        return result
+
+    last_result = parse_result
+
+    # Strategy 3: Google Vision API (if enabled)
+    if google_vision_ocr is not None:
+        logger.debug("Trying Google Vision API fallback")
+        ocr_result = google_vision_ocr.extract_text(image)
+        parse_result = utility_bill_parser.parse(ocr_result.text, ocr_result.confidence)
+        strategies_tried.append("google_vision")
+
+        if parse_result.success:
+            logger.info("Utility bill extracted successfully with Google Vision")
+            result = _build_success_response(parse_result, "google_vision")
+            result["warnings"] = result.get("warnings", []) + quality_warnings
+            return result
+
+        last_result = parse_result
+
+    # All strategies failed
+    logger.warning(f"All OCR strategies failed for utility bill. Tried: {strategies_tried}")
+    return {
+        "data": None,
+        "confidence": last_result.confidence if last_result else 0.0,
+        "errors": last_result.errors if last_result else ["All OCR strategies failed"],
+        "warnings": [f"Tried strategies: {', '.join(strategies_tried)}"] + quality_warnings,
+        "ocr_provider": "none",
+    }
+
+
+def process_business_document(file_path: Path) -> dict[str, Any]:
+    """Process business registration document image/PDF and extract data.
+
+    Uses full-page OCR with regex-based field extraction.
+
+    Args:
+        file_path: Path to the uploaded business document.
+
+    Returns:
+        Dictionary with extracted data, confidence, errors, warnings, and provider.
+    """
+    # Load image (handle PDF)
+    image, error = _load_image(file_path)
+    if error:
+        return {
+            "data": None,
+            "confidence": 0.0,
+            "errors": [error],
+            "ocr_provider": "none",
+        }
+
+    # Check image quality
+    quality = quality_checker.check_quality(image)
+    quality_warnings = []
+    if not quality["is_acceptable"]:
+        quality_warnings = quality["suggestions"]
+
+    strategies_tried = []
+    last_result = None
+
+    # Strategy 1: Tesseract on preprocessed full page
+    logger.debug("Trying Tesseract on preprocessed image")
+    preprocessed = preprocessor.preprocess_for_ocr(image)
+    ocr_result = ocr_extractor.extract_document_text(preprocessed)
+    parse_result = business_doc_parser.parse(ocr_result.text, ocr_result.confidence)
+    strategies_tried.append("tesseract_preprocessed")
+
+    if parse_result.success:
+        logger.info("Business document extracted successfully with Tesseract (preprocessed)")
+        result = _build_success_response(parse_result, "tesseract")
+        result["warnings"] = result.get("warnings", []) + quality_warnings
+        return result
+
+    last_result = parse_result
+
+    # Strategy 2: Tesseract on raw image
+    logger.debug("Trying Tesseract on raw image")
+    ocr_result = ocr_extractor.extract_document_text(image)
+    parse_result = business_doc_parser.parse(ocr_result.text, ocr_result.confidence)
+    strategies_tried.append("tesseract_raw")
+
+    if parse_result.success:
+        logger.info("Business document extracted successfully with Tesseract (raw)")
+        result = _build_success_response(parse_result, "tesseract")
+        result["warnings"] = result.get("warnings", []) + quality_warnings
+        return result
+
+    last_result = parse_result
+
+    # Strategy 3: Google Vision API (if enabled)
+    if google_vision_ocr is not None:
+        logger.debug("Trying Google Vision API fallback")
+        ocr_result = google_vision_ocr.extract_text(image)
+        parse_result = business_doc_parser.parse(ocr_result.text, ocr_result.confidence)
+        strategies_tried.append("google_vision")
+
+        if parse_result.success:
+            logger.info("Business document extracted successfully with Google Vision")
+            result = _build_success_response(parse_result, "google_vision")
+            result["warnings"] = result.get("warnings", []) + quality_warnings
+            return result
+
+        last_result = parse_result
+
+    # All strategies failed
+    logger.warning(f"All OCR strategies failed for business document. Tried: {strategies_tried}")
+    return {
+        "data": None,
+        "confidence": last_result.confidence if last_result else 0.0,
+        "errors": last_result.errors if last_result else ["All OCR strategies failed"],
+        "warnings": [f"Tried strategies: {', '.join(strategies_tried)}"] + quality_warnings,
+        "ocr_provider": "none",
+    }
+
+
 @router.post("/upload", response_model=DocumentUploadResponse)
 async def upload_document(
     file: UploadFile = File(...),
@@ -218,8 +422,19 @@ async def upload_document(
     try:
         # Process document synchronously for Day 1
         # (Will be made async in Day 6)
+        result = None
+
         if document_type == "passport":
             result = process_passport(file_path)
+        elif document_type == "utility_bill":
+            result = process_utility_bill(file_path)
+        elif document_type == "business_reg":
+            result = process_business_document(file_path)
+        else:
+            supported = ["passport", "utility_bill", "business_reg"]
+            processing_error = f"Document type '{document_type}' not supported. Supported: {supported}"
+
+        if result:
             document.extracted_data = result.get("data")
             document.ocr_confidence = result.get("confidence")
 
@@ -229,8 +444,6 @@ async def upload_document(
             else:
                 errors = result.get("errors", [])
                 processing_error = "; ".join(errors) if errors else "Extraction failed"
-        else:
-            processing_error = f"Document type '{document_type}' not yet supported"
 
     except Exception as e:
         processing_error = str(e)
