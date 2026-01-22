@@ -33,3 +33,6 @@ uploads/
 
 # Test cache
 .pytest_cache/
+
+# Test sample images - personal passport (contains real PII)
+apps/api/tests/sample_images/passport.jpg
