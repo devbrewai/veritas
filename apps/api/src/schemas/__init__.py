@@ -8,6 +8,7 @@ from src.schemas.document import (
     DocumentUploadResponse,
 )
 from src.schemas.passport import PassportData, PassportExtractionResult
+from src.schemas.utility_bill import UtilityBillData, UtilityBillExtractionResult
 
 __all__ = [
     "BusinessDocumentData",
@@ -17,4 +18,6 @@ __all__ = [
     "DocumentUploadResponse",
     "PassportData",
     "PassportExtractionResult",
+    "UtilityBillData",
+    "UtilityBillExtractionResult",
 ]
