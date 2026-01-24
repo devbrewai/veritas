@@ -50,13 +50,20 @@ class BusinessDocumentParser:
         "WI": "Wisconsin", "WY": "Wyoming", "DC": "District of Columbia",
     }
 
-    # Regex patterns for company name extraction
+    # Regex patterns for company name extraction (order matters - more specific patterns first)
     COMPANY_NAME_PATTERNS = [
+        # Nigerian CAC format: "I hereby certify that\nCOMPANY NAME" (OCR may have typos)
+        r"(?:I\s*hereby\s*cert[il]fy\s*that|TD\s*hereby\s*cestify\s*that)\s*\n?\s*([A-Z][A-Z0-9\s&.,'/\-]+?)(?:\n\n|\nis\s|\nés)",
+        # Mexican format: "A NOMBRE DE: COMPANY NAME"
+        r"A\s+NOMBRE\s+DE[:\s]+([A-Z][A-Za-z0-9\s&.,'\-]+?)(?:\n|$)",
+        # Kenyan/African business registration format: "business name of\nCOMPANY NAME"
+        r"(?:business\s+name\s+of|trading\s+as|t/a)\s*\n?\s*([A-Z][A-Z0-9\s&.,'\-]+?)(?:\n|at\s|$)",
         # Certificate patterns
         r"(?:This\s+is\s+to\s+certify\s+that|Certificate\s+of\s+(?:Incorporation|Formation|Organization)\s+of)\s+([A-Z][A-Za-z0-9\s&.,'\-]+?)(?:\n|,\s*(?:a|has|is))",
-        r"(?:Company\s*Name|Entity\s*Name|Name\s*of\s*(?:Company|Corporation|Entity)|Business\s*Name)[:\s]+([A-Za-z0-9\s&.,'\-]+?)(?:\n|$)",
         # Articles of Incorporation
         r"(?:ARTICLES\s+OF\s+INCORPORATION|CERTIFICATE\s+OF\s+INCORPORATION)\s+OF\s+([A-Z][A-Za-z0-9\s&.,'\-]+?)(?:\n|$)",
+        # Labeled name field (but not "name of" which would match the Kenyan format)
+        r"(?:Company\s*Name|Entity\s*Name|Name\s*of\s*(?:Company|Corporation|Entity))[:\s]+([A-Za-z0-9\s&.,'\-]+?)(?:\n|$)",
         # Name field in form
         r"(?:^|\n)Name[:\s]+([A-Z][A-Za-z0-9\s&.,'\-]+?)(?:\n|$)",
     ]
@@ -65,6 +72,14 @@ class BusinessDocumentParser:
     REGISTRATION_NUMBER_PATTERNS = [
         r"(?:File\s*Number|Entity\s*(?:Number|ID)|Registration\s*(?:Number|No)|Document\s*Number|Charter\s*Number|Corp\s*ID)[:\s#]*([A-Z0-9\-]+)",
         r"(?:EIN|Tax\s*ID|Federal\s*Tax\s*ID)[:\s]*(\d{2}-\d{7})",
+        # Nigerian CAC format: "BN 2962929" or "CRBN 09965846"
+        r"\b(BN\s*\d{6,10})\b",
+        r"\b(CRBN\s*\d{6,10})\b",
+        # Mexican Folio Mercantil format
+        r"FOLIO\s+MERCANTIL\s+ELECTRONICO\s+(\d+)",
+        # Kenyan business number format: BN-XXXXXXXX
+        r"(?:Business\s*No|Business\s*Number)[:\s.]*([A-Z]{2}-[A-Z0-9]+)",
+        r"\bNumber\s+([A-Z]{2}-[A-Z0-9]+)",
         r"(?:Number|No\.?)[:\s]*([A-Z]?\d{6,12})",
     ]
 
@@ -72,10 +87,16 @@ class BusinessDocumentParser:
     DATE_PATTERNS = [
         r"(?:Date\s*of\s*(?:Incorporation|Formation|Registration|Organization)|Incorporated|Filed|Formed|Organized|Registered)\s*(?:on)?[:\s]+(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})",
         r"(?:Date\s*of\s*(?:Incorporation|Formation)|Filed|Incorporated)[:\s]+([A-Za-z]+\s+\d{1,2},?\s*\d{4})",
+        # Nigerian CAC format: "Dated this 11th day of April, 2019"
+        r"Dated\s+this\s+(\d{1,2}(?:st|nd|rd|th)?\s+day\s+of\s+[A-Za-z]+,?\s*\d{4})",
         # "on the 15th day of March, 2022" pattern
         r"on\s+the\s+(\d{1,2}(?:st|nd|rd|th)?\s+day\s+of\s+[A-Za-z]+,?\s*\d{4})",
         # "on March 15, 2020" pattern (standalone)
         r"\bon\s+([A-Za-z]+\s+\d{1,2},?\s*\d{4})",
+        # "on 23-6-2022" pattern (DD-M-YYYY)
+        r"\bon\s+(\d{1,2}[-/]\d{1,2}[-/]\d{4})",
+        # Mexican format: "FECHA DE REGISTRO: DD/MM/YYYY"
+        r"FECHA\s+DE\s+REGISTRO[:\s]+(\d{1,2}[-/]\d{1,2}[-/]\d{4})",
         r"(?:Effective\s*Date|Date)[:\s]+(\d{1,2}[-/]\d{1,2}[-/]\d{4})",
     ]
 
@@ -339,8 +360,29 @@ class BusinessDocumentParser:
         # Clean up "day of" phrasing (e.g., "15 day of March" -> "15 March")
         date_str = re.sub(r"\s+day\s+of\s+", " ", date_str, flags=re.IGNORECASE)
 
+        # Check if format looks like DD-M-YYYY or DD/M/YYYY (day first)
+        # If first number > 12, it's definitely day-first
+        day_first_match = re.match(r"^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$", date_str)
+        if day_first_match:
+            first_num = int(day_first_match.group(1))
+            if first_num > 12:
+                # Definitely day-first format
+                try:
+                    parsed = date_parser.parse(date_str, dayfirst=True)
+                    return parsed.date()
+                except (ParserError, ValueError, OverflowError):
+                    pass
+
+        # Try default parsing (month-first for US format)
         try:
             parsed = date_parser.parse(date_str, dayfirst=False)
+            return parsed.date()
+        except (ParserError, ValueError, OverflowError):
+            pass
+
+        # Fallback: try day-first parsing
+        try:
+            parsed = date_parser.parse(date_str, dayfirst=True)
             return parsed.date()
         except (ParserError, ValueError, OverflowError):
             return None
