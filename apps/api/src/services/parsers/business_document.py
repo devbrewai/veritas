@@ -72,7 +72,10 @@ class BusinessDocumentParser:
     DATE_PATTERNS = [
         r"(?:Date\s*of\s*(?:Incorporation|Formation|Registration|Organization)|Incorporated|Filed|Formed|Organized|Registered)\s*(?:on)?[:\s]+(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})",
         r"(?:Date\s*of\s*(?:Incorporation|Formation)|Filed|Incorporated)[:\s]+([A-Za-z]+\s+\d{1,2},?\s*\d{4})",
-        r"(?:on\s+the\s+)?(\d{1,2}(?:st|nd|rd|th)?\s+day\s+of\s+[A-Za-z]+,?\s*\d{4})",
+        # "on the 15th day of March, 2022" pattern
+        r"on\s+the\s+(\d{1,2}(?:st|nd|rd|th)?\s+day\s+of\s+[A-Za-z]+,?\s*\d{4})",
+        # "on March 15, 2020" pattern (standalone)
+        r"\bon\s+([A-Za-z]+\s+\d{1,2},?\s*\d{4})",
         r"(?:Effective\s*Date|Date)[:\s]+(\d{1,2}[-/]\d{1,2}[-/]\d{4})",
     ]
 
@@ -331,8 +334,10 @@ class BusinessDocumentParser:
 
     def _parse_date(self, date_str: str) -> date | None:
         """Parse a date string into a date object."""
-        # Clean up ordinal suffixes
+        # Clean up ordinal suffixes (e.g., "15th" -> "15")
         date_str = re.sub(r"(\d+)(?:st|nd|rd|th)", r"\1", date_str)
+        # Clean up "day of" phrasing (e.g., "15 day of March" -> "15 March")
+        date_str = re.sub(r"\s+day\s+of\s+", " ", date_str, flags=re.IGNORECASE)
 
         try:
             parsed = date_parser.parse(date_str, dayfirst=False)
