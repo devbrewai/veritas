@@ -99,3 +99,30 @@ Copy `.env.example` to `.env` and configure:
 - `DATABASE_URL` - PostgreSQL connection string
 - `UPLOAD_DIR` - Directory for uploaded files
 - `DEBUG` - Enable debug mode (creates tables on startup)
+
+## Frontend Patterns
+
+- Server components by default; use `'use client'` for interactive components
+- Path aliases: `@/components`, `@/data`, `@/layouts`, `@/lib`, `@/modules`
+- Folders prefixed with `_` (e.g., `app/_insights`) don't create routes
+- Site config centralized in `data/siteMetadata.js`
+
+## Git Conventions
+
+Follow Angular commit conventions:
+
+```
+<type>(<scope>): <subject>
+
+- Bullet point descriptions
+- Use proper capitalization
+```
+
+Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+
+**Rules:**
+
+- Do not include "Co-Authored-By" or any AI-generated attribution comments
+- Use bullet points in the commit body to describe changes
+- Keep commits atomic: one logical change per commit
+- Commit methodically: stage and commit related changes together
