@@ -33,6 +33,28 @@ class BusinessDocumentParser:
         "nonprofit": ["nonprofit", "non-profit", "501(c)", "not for profit"],
     }
 
+    # Written number to digit mapping (for Indian MCA dates)
+    WRITTEN_ORDINALS = {
+        "first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5,
+        "sixth": 6, "seventh": 7, "eighth": 8, "ninth": 9, "tenth": 10,
+        "eleventh": 11, "twelfth": 12, "thirteenth": 13, "fourteenth": 14,
+        "fifteenth": 15, "sixteenth": 16, "seventeenth": 17, "eighteenth": 18,
+        "nineteenth": 19, "twentieth": 20, "twenty-first": 21, "twenty-second": 22,
+        "twenty-third": 23, "twenty-fourth": 24, "twenty-fifth": 25,
+        "twenty-sixth": 26, "twenty-seventh": 27, "twenty-eighth": 28,
+        "twenty-ninth": 29, "thirtieth": 30, "thirty-first": 31,
+    }
+
+    WRITTEN_YEARS = {
+        "two thousand nineteen": 2019, "two thousand twenty": 2020,
+        "two thousand twenty-one": 2021, "two thousand twenty one": 2021,
+        "two thousand twenty-two": 2022, "two thousand twenty two": 2022,
+        "two thousand twenty-three": 2023, "two thousand twenty three": 2023,
+        "two thousand twenty-four": 2024, "two thousand twenty four": 2024,
+        "two thousand twenty-five": 2025, "two thousand twenty five": 2025,
+        "two thousand twenty-six": 2026, "two thousand twenty six": 2026,
+    }
+
     # US State names and abbreviations
     US_STATES = {
         "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas",
@@ -52,6 +74,8 @@ class BusinessDocumentParser:
 
     # Regex patterns for company name extraction (order matters - more specific patterns first)
     COMPANY_NAME_PATTERNS = [
+        # Indian MCA Certificate of Incorporation: "I hereby certify that [NAME] is incorporated"
+        r"I\s+hereby\s+certify\s+that\s+([A-Z][A-Z0-9\s&.,'\-]+(?:PRIVATE\s+)?LIMITED)\s+is\s+incorporated",
         # Nigerian CAC format: "I hereby certify that\nCOMPANY NAME" (OCR may have typos)
         r"(?:I\s*hereby\s*cert[il]fy\s*that|TD\s*hereby\s*cestify\s*that)\s*\n?\s*([A-Z][A-Z0-9\s&.,'/\-]+?)(?:\n\n|\nis\s|\nés)",
         # Mexican format: "A NOMBRE DE: COMPANY NAME"
@@ -70,6 +94,9 @@ class BusinessDocumentParser:
 
     # Regex patterns for registration number
     REGISTRATION_NUMBER_PATTERNS = [
+        # Indian CIN (Corporate Identity Number) - 21 characters: U51909DL2021FTC381930
+        r"Corporate\s+Identity\s+Number[^:]*:\s*([A-Z]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6})",
+        r"\b([UL]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6})\b",
         r"(?:File\s*Number|Entity\s*(?:Number|ID)|Registration\s*(?:Number|No)|Document\s*Number|Charter\s*Number|Corp\s*ID)[:\s#]*([A-Z0-9\-]+)",
         r"(?:EIN|Tax\s*ID|Federal\s*Tax\s*ID)[:\s]*(\d{2}-\d{7})",
         # Nigerian CAC format: "BN 2962929" or "CRBN 09965846"
@@ -87,6 +114,8 @@ class BusinessDocumentParser:
     DATE_PATTERNS = [
         r"(?:Date\s*of\s*(?:Incorporation|Formation|Registration|Organization)|Incorporated|Filed|Formed|Organized|Registered)\s*(?:on)?[:\s]+(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})",
         r"(?:Date\s*of\s*(?:Incorporation|Formation)|Filed|Incorporated)[:\s]+([A-Za-z]+\s+\d{1,2},?\s*\d{4})",
+        # Indian MCA format: "this Fourth day of June Two thousand twenty-one"
+        r"this\s+([A-Za-z]+\s+day\s+of\s+[A-Za-z]+\s+[A-Za-z\s\-]+?)(?:\.|$)",
         # Nigerian CAC format: "Dated this 11th day of April, 2019"
         r"Dated\s+this\s+(\d{1,2}(?:st|nd|rd|th)?\s+day\s+of\s+[A-Za-z]+,?\s*\d{4})",
         # "on the 15th day of March, 2022" pattern
@@ -353,8 +382,67 @@ class BusinessDocumentParser:
 
         return None
 
+    def _convert_written_date(self, date_str: str) -> str | None:
+        """Convert written date format to parseable format.
+
+        E.g., "Fourth day of June Two thousand twenty-one" -> "4 June 2021"
+        """
+        date_lower = date_str.lower().strip()
+
+        # Try to extract day (ordinal word)
+        day = None
+        for word, num in self.WRITTEN_ORDINALS.items():
+            if date_lower.startswith(word):
+                day = num
+                date_lower = date_lower[len(word):].strip()
+                break
+
+        if not day:
+            return None
+
+        # Remove "day of" if present
+        date_lower = re.sub(r"^\s*day\s+of\s+", "", date_lower)
+
+        # Extract month
+        months = [
+            "january", "february", "march", "april", "may", "june",
+            "july", "august", "september", "october", "november", "december"
+        ]
+        month = None
+        for i, m in enumerate(months, 1):
+            if date_lower.startswith(m):
+                month = i
+                date_lower = date_lower[len(m):].strip()
+                break
+
+        if not month:
+            return None
+
+        # Extract year (written format) - check longer strings first
+        year = None
+        # Sort by length descending to match longer strings first
+        for written, num in sorted(self.WRITTEN_YEARS.items(), key=lambda x: len(x[0]), reverse=True):
+            if written in date_lower:
+                year = num
+                break
+
+        if not year:
+            return None
+
+        return f"{day} {months[month-1].title()} {year}"
+
     def _parse_date(self, date_str: str) -> date | None:
         """Parse a date string into a date object."""
+        # First, try to convert written date format (Indian MCA style)
+        if re.search(r"[a-zA-Z]+\s+day\s+of", date_str, re.IGNORECASE):
+            converted = self._convert_written_date(date_str)
+            if converted:
+                try:
+                    parsed = date_parser.parse(converted)
+                    return parsed.date()
+                except (ParserError, ValueError, OverflowError):
+                    pass
+
         # Clean up ordinal suffixes (e.g., "15th" -> "15")
         date_str = re.sub(r"(\d+)(?:st|nd|rd|th)", r"\1", date_str)
         # Clean up "day of" phrasing (e.g., "15 day of March" -> "15 March")
