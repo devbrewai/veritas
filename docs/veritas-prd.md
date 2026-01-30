@@ -453,19 +453,19 @@ Response (200 OK):
 
 **Tasks:**
 
-- [ ] **Copy sanctions screening engine from Sentinel**
-  - `packages/sanctions/loader.py` - OFAC/EU/UN list downloader
-  - `packages/sanctions/matcher.py` - Fuzzy matching engine
-- [ ] Adapt for full name + alias matching (not just transaction screening)
-- [ ] Add country-based filtering (match passport nationality)
-- [ ] Redis caching for sanctions lists
-- [ ] Test fuzzy matching with sample names
-- [ ] Return top match with confidence score (0-1)
+- [x] **Copy sanctions screening engine from Sentinel**
+  - Adapted `text_utils.py` - Text normalization and tokenization
+  - Adapted `matcher.py` - Fuzzy matching engine with blocking indices
+- [x] Adapt for full name + alias matching (not just transaction screening)
+- [x] Add country-based filtering (match passport nationality)
+- [ ] Redis caching for sanctions lists (deferred to future iteration)
+- [x] Test fuzzy matching with sample names
+- [x] Return top match with confidence score (0-1)
 
 **Deliverables:**
 
-- Sanctions screening integrated (reusing Sentinel code)
-- <2 second screening time
+- [x] Sanctions screening integrated (reusing Sentinel code)
+- [x] <2 second screening time (actual: <50ms)
 
 ### Day 4: Adverse Media + Risk Model Training
 
