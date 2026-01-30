@@ -435,19 +435,19 @@ Response (200 OK):
 
 **Tasks:**
 
-- [ ] Add utility bill parser:
+- [x] Add utility bill parser:
   - Extract: name, address, bill_date, utility_provider
   - Handle PDF and image formats
-- [ ] Add business document parser:
+- [x] Add business document parser:
   - Extract: company_name, registration_number, directors, registration_date
-- [ ] Implement image preprocessing (deskew, denoise, contrast enhancement)
-- [ ] Add OCR confidence scoring
-- [ ] Handle errors gracefully (poor quality scans, unsupported formats)
+- [x] Implement image preprocessing (deskew, denoise, contrast enhancement)
+- [x] Add OCR confidence scoring
+- [x] Handle errors gracefully (poor quality scans, unsupported formats)
 
 **Deliverables:**
 
-- Multi-document type support
-- Robust error handling
+- [x] Multi-document type support
+- [x] Robust error handling
 
 ### Day 3: Sanctions Screening (Reuse Sentinel)
 
