@@ -16,6 +16,10 @@ from src.services.sanctions.matcher import (
     get_initials_signature,
     get_token_count_bucket,
 )
+from src.services.sanctions.screener import (
+    SanctionsScreeningService,
+    sanctions_screening_service,
+)
 
 __all__ = [
     # Text utils
@@ -36,4 +40,7 @@ __all__ = [
     "get_first_token",
     "get_initials_signature",
     "get_token_count_bucket",
+    # Screener service
+    "SanctionsScreeningService",
+    "sanctions_screening_service",
 ]

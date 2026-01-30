@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/v1"
     DEBUG: bool = False
 
+    # Sanctions Screening
+    SANCTIONS_PICKLE_PATH: str = "./models/sanctions_screener.pkl"
+    SANCTIONS_ENABLED: bool = True
+
 
 @lru_cache
 def get_settings() -> Settings:
