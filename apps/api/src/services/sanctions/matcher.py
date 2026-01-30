@@ -566,3 +566,8 @@ class SanctionsMatcher:
             latency_ms=latency_ms,
             version=self.version,
         )
+
+
+# Alias for compatibility with Sentinel pickle files
+# The pickle references SanctionsScreener, so we need this alias
+SanctionsScreener = SanctionsMatcher
