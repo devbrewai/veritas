@@ -8,6 +8,18 @@ from src.schemas.document import (
     DocumentUploadResponse,
 )
 from src.schemas.passport import PassportData, PassportExtractionResult
+from src.schemas.sanctions import (
+    DocumentScreenRequest,
+    SanctionsBatchRequest,
+    SanctionsBatchResponse,
+    SanctionsDecision,
+    SanctionsMatchData,
+    SanctionsScreeningData,
+    SanctionsScreeningResult,
+    SanctionsScreenRequest,
+    SanctionsScreenResponse,
+    SanctionsServiceStatus,
+)
 from src.schemas.utility_bill import UtilityBillData, UtilityBillExtractionResult
 
 __all__ = [
@@ -20,4 +32,15 @@ __all__ = [
     "PassportExtractionResult",
     "UtilityBillData",
     "UtilityBillExtractionResult",
+    # Sanctions
+    "DocumentScreenRequest",
+    "SanctionsBatchRequest",
+    "SanctionsBatchResponse",
+    "SanctionsDecision",
+    "SanctionsMatchData",
+    "SanctionsScreeningData",
+    "SanctionsScreeningResult",
+    "SanctionsScreenRequest",
+    "SanctionsScreenResponse",
+    "SanctionsServiceStatus",
 ]
