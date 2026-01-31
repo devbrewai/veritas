@@ -6,6 +6,7 @@ the ML model with business logic for risk tier assignment.
 
 import logging
 import time
+from datetime import date, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import select
@@ -265,8 +266,28 @@ class RiskScoringService:
             if nationality:
                 country_risk = get_country_risk(nationality)
 
-        # Document age (not easily available, default to 0)
+        # Document age calculation
         doc_age_days = 0
+        if document:
+            # Primary: use issue_date if available
+            if document.issue_date:
+                doc_age_days = (date.today() - document.issue_date).days
+            # Fallback: calculate from expiry_date in extracted_data
+            elif document.extracted_data and document.extracted_data.get("expiry_date"):
+                try:
+                    expiry_str = document.extracted_data["expiry_date"]
+                    if isinstance(expiry_str, str):
+                        expiry_date = date.fromisoformat(expiry_str)
+                    else:
+                        expiry_date = expiry_str
+                    # Assume 10-year passport validity
+                    issue_date = expiry_date - timedelta(days=365 * 10)
+                    doc_age_days = (date.today() - issue_date).days
+                except (ValueError, TypeError):
+                    doc_age_days = 0
+
+        # Ensure non-negative
+        doc_age_days = max(0, doc_age_days)
 
         return RiskFeatures(
             document_quality=doc_quality,

@@ -313,6 +313,7 @@ class TestRiskScoringServiceScreeningResult:
         mock_document.id = mock_screening.document_id
         mock_document.ocr_confidence = 0.95
         mock_document.extracted_data = {"nationality": "USA"}
+        mock_document.issue_date = None
 
         # Setup mock db
         mock_db = AsyncMock()

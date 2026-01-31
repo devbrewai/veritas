@@ -2,6 +2,7 @@
 
 import logging
 import uuid
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -441,6 +442,23 @@ async def upload_document(
             if result.get("data"):
                 document.processed = True
                 status = "completed"
+
+                # Calculate issue_date from expiry_date for passports
+                # Assumes 10-year passport validity (standard for adults)
+                if document_type == "passport" and document.extracted_data:
+                    expiry_date_str = document.extracted_data.get("expiry_date")
+                    if expiry_date_str:
+                        try:
+                            # Parse the expiry date (format: YYYY-MM-DD)
+                            expiry_date = date.fromisoformat(expiry_date_str)
+                            # Calculate issue date assuming 10-year validity
+                            document.issue_date = expiry_date - timedelta(days=365 * 10)
+                            logger.info(
+                                f"Calculated issue_date {document.issue_date} "
+                                f"from expiry_date {expiry_date}"
+                            )
+                        except (ValueError, TypeError) as e:
+                            logger.warning(f"Could not parse expiry_date: {e}")
             else:
                 errors = result.get("errors", [])
                 processing_error = "; ".join(errors) if errors else "Extraction failed"
