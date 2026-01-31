@@ -471,24 +471,42 @@ Response (200 OK):
 
 **Tasks:**
 
-- [ ] GDELT API integration:
+- [x] GDELT API integration:
   - Search query: "{full_name}" AND (fraud OR scam OR "money laundering" OR sanctions)
   - Parse results, extract article titles, URLs, dates
-- [ ] Sentiment analysis on article titles (TextBlob or VADER)
-- [ ] Count negative mentions, compute average sentiment
-- [ ] Create synthetic training data for risk model:
+  - Implemented async httpx client with rate limiting and error handling
+- [x] Sentiment analysis on article titles (VADER)
+  - Created `SentimentAnalyzer` wrapper with batch processing
+  - Categories: Negative (<-0.05), Neutral, Positive (>0.05)
+- [x] Count negative mentions, compute average sentiment
+  - `AdverseMediaService` orchestrates GDELT + sentiment analysis
+  - Updates `ScreeningResult` with adverse media findings
+- [x] Create synthetic training data for risk model:
   - 1000 samples with labels (Low/Medium/High risk)
-  - Features: document_quality, sanctions_confidence, adverse_media_count, country_risk, document_age
-- [ ] Train LightGBM classifier
-- [ ] Calibrate probabilities (Platt scaling)
-- [ ] Define risk tiers: Low (<0.3), Medium (0.3-0.7), High (>0.7)
-- [ ] Generate SHAP explanations (top 5 contributing features)
+  - Features: document_quality, sanctions_score, sanctions_match, adverse_media_count, adverse_media_sentiment, country_risk, document_age_days
+  - Realistic distributions based on KYC domain knowledge
+- [x] Train LightGBM classifier
+  - Multi-class classification (Low/Medium/High)
+  - 3-fold cross-validation for calibration
+  - 98% accuracy on test set
+- [x] Calibrate probabilities (Platt scaling via CalibratedClassifierCV)
+- [x] Define risk tiers: Low (<0.3), Medium (0.3-0.7), High (>0.7)
+  - Recommendations: Approve, Review, Reject
+- [x] Generate SHAP explanations (top 5 contributing features)
+  - TreeExplainer for multi-class LightGBM
+  - Human-readable risk factor formatting
+- [x] API endpoints for risk scoring:
+  - `POST /risk/adverse-media` - Scan name
+  - `POST /risk/adverse-media/document/{id}` - Scan from document
+  - `POST /risk/score` - Score from features
+  - `POST /risk/score/screening/{id}` - Score existing screening
+  - `GET /risk/health` - Service status
 
 **Deliverables:**
 
-- Adverse media scanning working
-- Risk model trained and calibrated
-- Explainable risk tiers
+- [x] Adverse media scanning working
+- [x] Risk model trained and calibrated (98% accuracy)
+- [x] Explainable risk tiers with SHAP contributions
 
 ### Day 5: Better Auth + Multi-Tenancy
 
