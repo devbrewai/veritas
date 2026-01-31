@@ -1,7 +1,7 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import Boolean, Float, Integer, JSON, String, Text, Uuid, func
+from sqlalchemy import Boolean, Date, Float, Integer, JSON, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.models.base import Base
@@ -71,4 +71,12 @@ class Document(Base):
     processing_error: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
+    )
+
+    # Document issue date - calculated from expiry date for passports
+    # Used for document age risk scoring (older documents = higher risk)
+    issue_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+        index=True,
     )
