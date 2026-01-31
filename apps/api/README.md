@@ -35,17 +35,50 @@ Copy `.env.example` to `.env` and configure:
 
 ## API Endpoints
 
+### Health & Info
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/` | API info |
 | `GET` | `/health` | Health check |
-| `POST` | `/v1/documents/upload` | Upload and process document |
+
+### Documents
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/v1/documents/upload` | Upload and process document (passport, utility bill) |
 | `GET` | `/v1/documents/{id}` | Get document by ID |
+
+### Sanctions Screening
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/v1/screening/sanctions` | Screen a name against OFAC/UN sanctions |
+| `POST` | `/v1/screening/sanctions/batch` | Batch screen up to 100 names |
+| `POST` | `/v1/screening/document/{id}` | Screen names from a processed document |
+| `GET` | `/v1/screening/sanctions/health` | Sanctions service status |
+
+### Adverse Media & Risk Scoring
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/v1/risk/adverse-media` | Scan name for adverse media (GDELT + VADER) |
+| `POST` | `/v1/risk/adverse-media/document/{id}` | Scan document for adverse media |
+| `POST` | `/v1/risk/score` | Score risk from features (LightGBM + SHAP) |
+| `POST` | `/v1/risk/score/screening/{id}` | Score risk for screening result |
+| `GET` | `/v1/risk/health` | Risk service status |
+
+## Features
+
+- **Document Processing**: OCR extraction from passports (MRZ) and utility bills
+- **Sanctions Screening**: OFAC + UN consolidated list with fuzzy matching
+- **Adverse Media**: GDELT news search with VADER sentiment analysis
+- **Risk Scoring**: LightGBM classifier with SHAP explanations
 
 ## Testing
 
 ```bash
-# Run all tests
+# Run all tests (300+ tests)
 uv run pytest
 
 # Run specific test
