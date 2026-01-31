@@ -47,6 +47,25 @@ class AdverseMediaService:
             search_terms=gdelt_search_terms,
         )
         self._sentiment_analyzer = SentimentAnalyzer()
+        self._initialized = False
+
+    def initialize(self) -> None:
+        """Initialize the service (mark as ready)."""
+        self._initialized = True
+        logger.info("Adverse media service initialized")
+
+    @property
+    def is_ready(self) -> bool:
+        """Check if service is ready."""
+        return self._initialized
+
+    async def check_gdelt_health(self) -> bool:
+        """Check if GDELT API is accessible.
+
+        Returns:
+            True if GDELT is reachable, False otherwise.
+        """
+        return await self._gdelt_client.health_check()
 
     async def scan_name(
         self,

@@ -1,3 +1,9 @@
+from src.schemas.adverse_media import (
+    AdverseMediaArticle,
+    AdverseMediaData,
+    AdverseMediaResult,
+    SentimentCategory,
+)
 from src.schemas.business_document import (
     BusinessDocumentData,
     BusinessDocumentExtractionResult,
@@ -8,6 +14,15 @@ from src.schemas.document import (
     DocumentUploadResponse,
 )
 from src.schemas.passport import PassportData, PassportExtractionResult
+from src.schemas.risk import (
+    Recommendation,
+    RiskFeatureContribution,
+    RiskScoringData,
+    RiskScoringRequest,
+    RiskScoringResponse,
+    RiskScoringResult,
+    RiskTier,
+)
 from src.schemas.sanctions import (
     DocumentScreenRequest,
     SanctionsBatchRequest,
@@ -23,15 +38,29 @@ from src.schemas.sanctions import (
 from src.schemas.utility_bill import UtilityBillData, UtilityBillExtractionResult
 
 __all__ = [
+    # Adverse Media
+    "AdverseMediaArticle",
+    "AdverseMediaData",
+    "AdverseMediaResult",
+    "SentimentCategory",
+    # Business Document
     "BusinessDocumentData",
     "BusinessDocumentExtractionResult",
     "Director",
+    # Document
     "DocumentResponse",
     "DocumentUploadResponse",
+    # Passport
     "PassportData",
     "PassportExtractionResult",
-    "UtilityBillData",
-    "UtilityBillExtractionResult",
+    # Risk
+    "Recommendation",
+    "RiskFeatureContribution",
+    "RiskScoringData",
+    "RiskScoringRequest",
+    "RiskScoringResponse",
+    "RiskScoringResult",
+    "RiskTier",
     # Sanctions
     "DocumentScreenRequest",
     "SanctionsBatchRequest",
@@ -43,4 +72,7 @@ __all__ = [
     "SanctionsScreenRequest",
     "SanctionsScreenResponse",
     "SanctionsServiceStatus",
+    # Utility Bill
+    "UtilityBillData",
+    "UtilityBillExtractionResult",
 ]

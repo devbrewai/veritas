@@ -13,7 +13,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.config import get_settings
 from src.database import engine
 from src.models import Base
-from src.routers import documents_router, health_router, screening_router
+from src.routers import documents_router, health_router, risk_router, screening_router
+from src.services.adverse_media import adverse_media_service
+from src.services.risk.scorer import risk_scoring_service
 from src.services.sanctions import sanctions_screening_service
 
 settings = get_settings()
@@ -28,8 +30,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
-    # Initialize sanctions screening service
+    # Initialize services
     sanctions_screening_service.initialize()
+    adverse_media_service.initialize()
+    risk_scoring_service.initialize()
 
     yield
 
@@ -59,6 +63,7 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(documents_router, prefix=settings.API_V1_PREFIX)
 app.include_router(screening_router, prefix=settings.API_V1_PREFIX)
+app.include_router(risk_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/")
