@@ -2,7 +2,7 @@
 # Usage: make <target>
 
 .PHONY: help setup dev test clean
-.PHONY: db-up db-down db-reset db-logs db-shell
+.PHONY: db-up db-down db-status db-reset db-logs db-shell
 .PHONY: api-setup api-dev api-test api-migrate api-shell api-lint
 .PHONY: web-setup web-dev web-build web-lint
 
@@ -17,8 +17,9 @@ help:
 	@echo "  make clean          - Clean build artifacts"
 	@echo ""
 	@echo "Database (PostgreSQL via Docker):"
-	@echo "  make db-up          - Start PostgreSQL container"
+	@echo "  make db-up          - Start PostgreSQL (creates if needed)"
 	@echo "  make db-down        - Stop PostgreSQL container"
+	@echo "  make db-status      - Check PostgreSQL status"
 	@echo "  make db-reset       - Reset database (destroy + recreate)"
 	@echo "  make db-logs        - View PostgreSQL logs"
 	@echo "  make db-shell       - Open psql shell"
@@ -78,30 +79,55 @@ clean:
 # =============================================================================
 
 db-up:
-	@echo "Starting PostgreSQL..."
-	docker compose up -d postgres
-	@echo "Waiting for PostgreSQL to be ready..."
-	@sleep 3
-	@docker compose exec postgres pg_isready -U postgres || (echo "PostgreSQL not ready" && exit 1)
-	@echo "✅ PostgreSQL is running on localhost:5432"
+	@if docker ps -a --format '{{.Names}}' | grep -q '^veritas-db$$'; then \
+		if docker ps --format '{{.Names}}' | grep -q '^veritas-db$$'; then \
+			echo "✅ PostgreSQL (veritas-db) is already running on localhost:5432"; \
+		else \
+			echo "Starting existing PostgreSQL container..."; \
+			docker start veritas-db; \
+			sleep 2; \
+			echo "✅ PostgreSQL is running on localhost:5432"; \
+		fi \
+	else \
+		echo "Creating PostgreSQL container..."; \
+		docker compose up -d postgres; \
+		echo "Waiting for PostgreSQL to be ready..."; \
+		sleep 3; \
+		echo "✅ PostgreSQL is running on localhost:5432"; \
+	fi
 
 db-down:
 	@echo "Stopping PostgreSQL..."
-	docker compose down
+	@docker stop veritas-db 2>/dev/null || true
 	@echo "✅ PostgreSQL stopped"
+
+db-status:
+	@if docker ps --format '{{.Names}}' | grep -q '^veritas-db$$'; then \
+		echo "✅ PostgreSQL (veritas-db) is running"; \
+		docker exec veritas-db pg_isready -U postgres; \
+	elif docker ps -a --format '{{.Names}}' | grep -q '^veritas-db$$'; then \
+		echo "⚠️  PostgreSQL (veritas-db) exists but is stopped"; \
+		echo "   Run 'make db-up' to start it"; \
+	else \
+		echo "❌ PostgreSQL (veritas-db) container not found"; \
+		echo "   Run 'make db-up' to create it"; \
+	fi
 
 db-reset:
 	@echo "Resetting database..."
-	docker compose down -v
+	@echo "⚠️  This will delete all data in the database!"
+	@docker stop veritas-db 2>/dev/null || true
+	@docker rm veritas-db 2>/dev/null || true
+	@docker volume rm veritas_postgres_data 2>/dev/null || true
 	docker compose up -d postgres
 	@sleep 3
 	@echo "✅ Database reset complete"
 
 db-logs:
-	docker compose logs -f postgres
+	docker logs -f veritas-db
 
 db-shell:
-	docker compose exec postgres psql -U postgres -d veritas
+	docker exec -it veritas-db psql -U postgres -d veritas
 
 # =============================================================================
 # API Commands (FastAPI)
