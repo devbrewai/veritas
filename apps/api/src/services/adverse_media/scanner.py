@@ -145,6 +145,7 @@ class AdverseMediaService:
         document_id: UUID,
         db: AsyncSession,
         max_results: int = 10,
+        user_id: UUID | None = None,
     ) -> AdverseMediaResult:
         """Scan names from a processed document.
 
@@ -156,16 +157,18 @@ class AdverseMediaService:
             document_id: UUID of the document to scan.
             db: Database session.
             max_results: Maximum articles to return.
+            user_id: User ID for multi-tenant filtering (optional for backward compat).
 
         Returns:
             AdverseMediaResult with scan findings.
         """
         start_time = time.time()
 
-        # Get document
-        result = await db.execute(
-            select(Document).where(Document.id == document_id)
-        )
+        # Get document with user_id filter if provided
+        query = select(Document).where(Document.id == document_id)
+        if user_id is not None:
+            query = query.where(Document.user_id == user_id)
+        result = await db.execute(query)
         document = result.scalar_one_or_none()
 
         if not document:

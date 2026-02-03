@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
+from src.dependencies.auth import get_current_user_id
 from src.schemas.adverse_media import (
     AdverseMediaRequest,
     AdverseMediaResponse,
@@ -90,6 +91,7 @@ async def scan_adverse_media(
 async def scan_document_adverse_media(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
+    user_id: UUID = Depends(get_current_user_id),
 ) -> AdverseMediaResponse:
     """Scan for adverse media based on document extracted data.
 
@@ -98,6 +100,7 @@ async def scan_document_adverse_media(
 
     Args:
         document_id: UUID of the document to scan
+        user_id: Current authenticated user's ID
 
     Returns:
         Adverse media scan results
@@ -113,6 +116,7 @@ async def scan_document_adverse_media(
         result = await adverse_media_service.scan_document(
             document_id=document_id,
             db=db,
+            user_id=user_id,
         )
         return AdverseMediaResponse(result=result)
     except Exception as e:
@@ -183,6 +187,7 @@ async def score_risk(request: RiskScoringRequest) -> RiskScoringResponse:
 async def score_screening_result(
     screening_id: UUID,
     db: AsyncSession = Depends(get_db),
+    user_id: UUID = Depends(get_current_user_id),
 ) -> RiskScoringResponse:
     """Score risk for an existing screening result.
 
@@ -192,6 +197,7 @@ async def score_screening_result(
 
     Args:
         screening_id: UUID of the screening result to score
+        user_id: Current authenticated user's ID
 
     Returns:
         Risk scoring result with SHAP explanations
@@ -207,6 +213,7 @@ async def score_screening_result(
         result = await risk_scoring_service.score_screening_result(
             screening_result_id=screening_id,
             db=db,
+            user_id=user_id,
         )
         return RiskScoringResponse(result=result)
     except Exception as e:

@@ -276,6 +276,7 @@ class SanctionsScreeningService:
         self,
         document_id: UUID,
         db: AsyncSession,
+        user_id: UUID | None = None,
     ) -> SanctionsScreeningResult:
         """
         Screen names extracted from a processed document.
@@ -286,14 +287,18 @@ class SanctionsScreeningService:
         Args:
             document_id: ID of the processed document
             db: Database session
+            user_id: User ID for multi-tenant filtering (optional for backward compat)
 
         Returns:
             SanctionsScreeningResult with match details
         """
         start_time = time.time()
 
-        # Get the document
-        result = await db.execute(select(Document).where(Document.id == document_id))
+        # Get the document with user_id filter if provided
+        query = select(Document).where(Document.id == document_id)
+        if user_id is not None:
+            query = query.where(Document.user_id == user_id)
+        result = await db.execute(query)
         document = result.scalar_one_or_none()
 
         if not document:
@@ -338,6 +343,7 @@ class SanctionsScreeningService:
         if screening_result.success and screening_result.data:
             db_result = ScreeningResult(
                 document_id=document_id,
+                user_id=document.user_id,  # Inherit user_id from document
                 customer_id=document.customer_id,
                 full_name=full_name,
                 sanctions_match=screening_result.data.is_match,

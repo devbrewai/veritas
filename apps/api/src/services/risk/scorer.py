@@ -163,6 +163,7 @@ class RiskScoringService:
         self,
         screening_result_id: UUID,
         db: AsyncSession,
+        user_id: UUID | None = None,
     ) -> RiskScoringResult:
         """Score risk for an existing screening result.
 
@@ -172,6 +173,7 @@ class RiskScoringService:
         Args:
             screening_result_id: UUID of the screening result.
             db: Database session.
+            user_id: User ID for multi-tenant filtering (optional for backward compat).
 
         Returns:
             RiskScoringResult with assessment.
@@ -185,10 +187,11 @@ class RiskScoringService:
                 processing_time_ms=(time.time() - start_time) * 1000,
             )
 
-        # Get screening result
-        result = await db.execute(
-            select(ScreeningResult).where(ScreeningResult.id == screening_result_id)
-        )
+        # Get screening result with user_id filter if provided
+        query = select(ScreeningResult).where(ScreeningResult.id == screening_result_id)
+        if user_id is not None:
+            query = query.where(ScreeningResult.user_id == user_id)
+        result = await db.execute(query)
         screening = result.scalar_one_or_none()
 
         if not screening:
@@ -198,12 +201,13 @@ class RiskScoringService:
                 processing_time_ms=(time.time() - start_time) * 1000,
             )
 
-        # Get associated document for OCR confidence
+        # Get associated document for OCR confidence (also filtered by user_id)
         document = None
         if screening.document_id:
-            doc_result = await db.execute(
-                select(Document).where(Document.id == screening.document_id)
-            )
+            doc_query = select(Document).where(Document.id == screening.document_id)
+            if user_id is not None:
+                doc_query = doc_query.where(Document.user_id == user_id)
+            doc_result = await db.execute(doc_query)
             document = doc_result.scalar_one_or_none()
 
         # Extract features from screening result

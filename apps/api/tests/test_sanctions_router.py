@@ -4,9 +4,14 @@ API tests for sanctions screening endpoints.
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from uuid import UUID
 
 from main import app
+from src.dependencies.auth import get_current_user_id
 from src.services.sanctions import sanctions_screening_service
+
+# Fixed test user ID for consistent testing
+TEST_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -18,12 +23,20 @@ def initialize_service():
 
 @pytest.fixture
 async def client():
-    """Create async test client."""
+    """Create async test client with auth dependency override."""
+
+    async def override_get_current_user_id() -> UUID:
+        return TEST_USER_ID
+
+    app.dependency_overrides[get_current_user_id] = override_get_current_user_id
+
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
     ) as client:
         yield client
+
+    app.dependency_overrides.clear()
 
 
 class TestSanctionsHealthEndpoint:

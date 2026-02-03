@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
+from src.dependencies.auth import get_current_user_id
 from src.schemas.sanctions import (
     SanctionsBatchRequest,
     SanctionsBatchResponse,
@@ -112,6 +113,7 @@ async def screen_names_batch(
 async def screen_document(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
+    user_id: UUID = Depends(get_current_user_id),
 ) -> SanctionsScreenResponse:
     """
     Screen names extracted from a processed document.
@@ -130,6 +132,7 @@ async def screen_document(
     result = await sanctions_screening_service.screen_document(
         document_id=document_id,
         db=db,
+        user_id=user_id,
     )
 
     if not result.success and "not found" in str(result.errors):
