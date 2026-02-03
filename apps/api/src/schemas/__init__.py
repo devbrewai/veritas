@@ -45,6 +45,7 @@ from src.schemas.sanctions import (
     SanctionsScreenResponse,
     SanctionsServiceStatus,
 )
+from src.schemas.user import UserStats
 from src.schemas.utility_bill import UtilityBillData, UtilityBillExtractionResult
 
 __all__ = [
@@ -91,6 +92,8 @@ __all__ = [
     "SanctionsScreenRequest",
     "SanctionsScreenResponse",
     "SanctionsServiceStatus",
+    # User
+    "UserStats",
     # Utility Bill
     "UtilityBillData",
     "UtilityBillExtractionResult",
