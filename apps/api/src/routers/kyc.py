@@ -1,6 +1,7 @@
 """KYC aggregation endpoints."""
 
 import logging
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -160,8 +161,9 @@ async def _get_kyc_result(
     # Determine overall status
     overall_status = _determine_overall_status(sanctions_result, risk_result)
 
-    # Build final result
-    created_at = documents[0].uploaded_at if documents else None
+    # Build final result with timestamps
+    now = datetime.utcnow()
+    created_at = documents[0].uploaded_at if documents else now
     updated_at = screenings[0].screened_at if screenings else created_at
 
     return KYCResult(
