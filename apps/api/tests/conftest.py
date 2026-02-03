@@ -2,6 +2,7 @@
 
 import asyncio
 from collections.abc import AsyncGenerator
+from uuid import UUID, uuid4
 
 import pytest
 import pytest_asyncio
@@ -9,10 +10,14 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.database import get_db
+from src.dependencies.auth import get_current_user_id
 from src.models import Base
 
 # Use SQLite for testing (in-memory)
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+
+# Fixed test user ID for consistent testing
+TEST_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
 
 
 @pytest.fixture(scope="session")
@@ -49,13 +54,17 @@ async def db_session(db_engine) -> AsyncGenerator[AsyncSession, None]:
 
 @pytest_asyncio.fixture(scope="function")
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    """Create test HTTP client with database dependency override."""
+    """Create test HTTP client with database and auth dependency overrides."""
     from main import app
 
     async def override_get_db():
         yield db_session
 
+    async def override_get_current_user_id() -> UUID:
+        return TEST_USER_ID
+
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user_id] = override_get_current_user_id
 
     async with AsyncClient(
         transport=ASGITransport(app=app),
@@ -64,3 +73,15 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
         yield test_client
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def test_user_id() -> UUID:
+    """Return the test user ID for assertions."""
+    return TEST_USER_ID
+
+
+@pytest.fixture
+def other_user_id() -> UUID:
+    """Return a different user ID for multi-tenancy tests."""
+    return UUID("00000000-0000-0000-0000-000000000002")

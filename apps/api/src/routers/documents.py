@@ -5,6 +5,7 @@ import uuid
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 import cv2
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -13,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import get_settings
 from src.database import get_db
+from src.dependencies.auth import get_current_user_id
 from src.models.document import Document
 from src.schemas.document import DocumentResponse, DocumentUploadResponse
 from src.services.ocr import (
@@ -365,6 +367,7 @@ async def upload_document(
     customer_id: str | None = Form(default=None),
     document_type: str = Form(default="passport"),
     db: AsyncSession = Depends(get_db),
+    user_id: UUID = Depends(get_current_user_id),
 ) -> DocumentUploadResponse:
     """Upload and process a document.
 
@@ -410,6 +413,7 @@ async def upload_document(
     # Create document record
     document = Document(
         id=doc_id,
+        user_id=user_id,
         customer_id=customer_id,
         document_type=document_type,
         file_path=str(file_path),
@@ -484,17 +488,24 @@ async def upload_document(
 async def get_document(
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    user_id: UUID = Depends(get_current_user_id),
 ) -> Document:
     """Retrieve a document by ID.
 
     Args:
         document_id: UUID of the document.
         db: Database session.
+        user_id: Current authenticated user's ID.
 
     Returns:
         Document details including extracted data.
     """
-    result = await db.execute(select(Document).where(Document.id == document_id))
+    result = await db.execute(
+        select(Document).where(
+            Document.id == document_id,
+            Document.user_id == user_id,
+        )
+    )
     document = result.scalar_one_or_none()
 
     if not document:
