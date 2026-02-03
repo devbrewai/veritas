@@ -163,7 +163,7 @@ class RiskScoringService:
         self,
         screening_result_id: UUID,
         db: AsyncSession,
-        user_id: UUID | None = None,
+        user_id: str | None = None,
     ) -> RiskScoringResult:
         """Score risk for an existing screening result.
 

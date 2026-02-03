@@ -1,7 +1,5 @@
 """Tests for rate limiting middleware."""
 
-import uuid
-
 import pytest
 
 from src.middleware.rate_limit import RateLimiter
@@ -16,17 +14,17 @@ class TestRateLimiter:
         return RateLimiter(max_requests=3, window_seconds=60)
 
     @pytest.fixture
-    def user_a_id(self) -> uuid.UUID:
+    def user_a_id(self) -> str:
         """Test user A ID."""
-        return uuid.UUID("00000000-0000-0000-0000-000000000001")
+        return "test-user-a"
 
     @pytest.fixture
-    def user_b_id(self) -> uuid.UUID:
+    def user_b_id(self) -> str:
         """Test user B ID."""
-        return uuid.UUID("00000000-0000-0000-0000-000000000002")
+        return "test-user-b"
 
     def test_rate_limit_allows_normal_usage(
-        self, limiter: RateLimiter, user_a_id: uuid.UUID
+        self, limiter: RateLimiter, user_a_id: str
     ):
         """Under limit succeeds."""
         # First 3 requests should succeed
@@ -35,7 +33,7 @@ class TestRateLimiter:
         assert limiter.check(user_a_id) is True
 
     def test_rate_limit_blocks_excess(
-        self, limiter: RateLimiter, user_a_id: uuid.UUID
+        self, limiter: RateLimiter, user_a_id: str
     ):
         """Over limit returns False."""
         # Use up the limit
@@ -47,7 +45,7 @@ class TestRateLimiter:
         assert limiter.check(user_a_id) is False
 
     def test_rate_limit_per_user(
-        self, limiter: RateLimiter, user_a_id: uuid.UUID, user_b_id: uuid.UUID
+        self, limiter: RateLimiter, user_a_id: str, user_b_id: str
     ):
         """Different users have separate limits."""
         # Use up User A's limit
@@ -66,7 +64,7 @@ class TestRateLimiter:
         assert limiter.check(user_b_id) is False
 
     def test_get_remaining_decrements(
-        self, limiter: RateLimiter, user_a_id: uuid.UUID
+        self, limiter: RateLimiter, user_a_id: str
     ):
         """Remaining count decreases with each request."""
         assert limiter.get_remaining(user_a_id) == 3
@@ -85,7 +83,7 @@ class TestRateLimiter:
         assert limiter.get_remaining(user_a_id) == 0
 
     def test_reset_clears_count(
-        self, limiter: RateLimiter, user_a_id: uuid.UUID
+        self, limiter: RateLimiter, user_a_id: str
     ):
         """Reset allows user to start fresh."""
         # Use up the limit
@@ -106,7 +104,7 @@ class TestRateLimiter:
         """Different window sizes work correctly."""
         # Very short window for testing
         short_limiter = RateLimiter(max_requests=2, window_seconds=1)
-        user_id = uuid.uuid4()
+        user_id = "test-user-window"
 
         assert short_limiter.check(user_id) is True
         assert short_limiter.check(user_id) is True
@@ -115,7 +113,7 @@ class TestRateLimiter:
     def test_high_request_limit(self):
         """High request limits work correctly."""
         high_limiter = RateLimiter(max_requests=100, window_seconds=60)
-        user_id = uuid.uuid4()
+        user_id = "test-user-high-limit"
 
         # Should allow 100 requests
         for _ in range(100):
@@ -132,7 +130,7 @@ class TestRateLimiterConcurrency:
         """Can track many users simultaneously."""
         limiter = RateLimiter(max_requests=5, window_seconds=60)
 
-        users = [uuid.uuid4() for _ in range(100)]
+        users = [f"test-user-{i}" for i in range(100)]
 
         # Each user can make 5 requests
         for user in users:
@@ -146,8 +144,8 @@ class TestRateLimiterConcurrency:
         """One user's rate limit doesn't affect another."""
         limiter = RateLimiter(max_requests=2, window_seconds=60)
 
-        user_a = uuid.uuid4()
-        user_b = uuid.uuid4()
+        user_a = "test-user-isolation-a"
+        user_b = "test-user-isolation-b"
 
         # Alternate between users
         assert limiter.check(user_a) is True

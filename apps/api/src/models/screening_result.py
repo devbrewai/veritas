@@ -21,8 +21,9 @@ class ScreeningResult(Base):
     )
 
     # Multi-tenant isolation - user ID from Better Auth JWT
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid,
+    # Better Auth uses nanoid-style string IDs, not UUIDs
+    user_id: Mapped[str] = mapped_column(
+        String(255),
         nullable=False,
         index=True,
     )

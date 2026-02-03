@@ -2,7 +2,6 @@
 
 import logging
 from datetime import datetime, timedelta
-from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
@@ -22,7 +21,7 @@ router = APIRouter(prefix="/users", tags=["users"])
 @router.get("/me/stats", response_model=UserStats)
 async def get_user_stats(
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id),
+    user_id: str = Depends(get_current_user_id),
 ) -> UserStats:
     """Get statistics for the current user.
 

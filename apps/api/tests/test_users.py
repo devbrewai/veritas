@@ -15,9 +15,9 @@ from src.models import Base
 from src.models.document import Document
 from src.models.screening_result import ScreeningResult
 
-# Test user IDs
-USER_A_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
-USER_B_ID = uuid.UUID("00000000-0000-0000-0000-000000000002")
+# Test user IDs - Better Auth uses nanoid-style string IDs
+USER_A_ID = "test-user-a"
+USER_B_ID = "test-user-b"
 
 # Test database URL
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -145,13 +145,13 @@ async def user_b_document(db_session: AsyncSession) -> Document:
     return doc
 
 
-def create_client_for_user(db_session: AsyncSession, user_id: uuid.UUID):
+def create_client_for_user(db_session: AsyncSession, user_id: str):
     """Create a test client authenticated as a specific user."""
 
     async def override_get_db():
         yield db_session
 
-    async def override_get_current_user_id() -> uuid.UUID:
+    async def override_get_current_user_id() -> str:
         return user_id
 
     app.dependency_overrides[get_db] = override_get_db

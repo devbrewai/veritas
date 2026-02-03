@@ -5,7 +5,6 @@ import uuid
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
-from uuid import UUID
 
 import cv2
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -368,7 +367,7 @@ async def upload_document(
     customer_id: str | None = Form(default=None),
     document_type: str = Form(default="passport"),
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(check_rate_limit),
+    user_id: str = Depends(check_rate_limit),
 ) -> DocumentUploadResponse:
     """Upload and process a document.
 
@@ -494,7 +493,7 @@ async def upload_document(
 async def get_document(
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id),
+    user_id: str = Depends(get_current_user_id),
 ) -> Document:
     """Retrieve a document by ID.
 

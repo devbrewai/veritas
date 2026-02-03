@@ -2,7 +2,6 @@
 
 import logging
 from datetime import datetime
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -65,7 +64,7 @@ def _determine_overall_status(
 
 async def _get_kyc_result(
     customer_id: str,
-    user_id: UUID,
+    user_id: str,
     db: AsyncSession,
 ) -> KYCResult:
     """Build KYC result for a single customer.
@@ -182,7 +181,7 @@ async def _get_kyc_result(
 async def get_kyc_result(
     customer_id: str,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id),
+    user_id: str = Depends(get_current_user_id),
 ) -> KYCResult:
     """Get aggregated KYC results for a customer.
 
@@ -198,7 +197,7 @@ async def get_kyc_result(
 async def batch_kyc_results(
     request: KYCBatchRequest,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id),
+    user_id: str = Depends(get_current_user_id),
 ) -> KYCBatchResponse:
     """Get KYC results for multiple customers in batch.
 

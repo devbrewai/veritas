@@ -65,14 +65,16 @@ class TestTokenService:
 
     def test_get_user_id_success(self):
         """Test successful user ID extraction."""
-        user_id = "550e8400-e29b-41d4-a716-446655440000"
+        # Better Auth uses nanoid-style string IDs, not UUIDs
+        user_id = "3kDP7YoikCbLFmDtPJA9Rs315BvXLzWF"
         mock_payload = {"sub": user_id}
 
         with patch.object(TokenService, "decode_token", return_value=mock_payload):
             service = TokenService()
             result = service.get_user_id("test_token")
 
-            assert result == UUID(user_id)
+            # Result is now a string, not a UUID
+            assert result == user_id
 
     def test_get_user_id_missing(self):
         """Test missing user ID raises error."""
@@ -85,16 +87,17 @@ class TestTokenService:
 
             assert "missing user id" in str(exc.value).lower()
 
-    def test_get_user_id_invalid_format(self):
-        """Test invalid user ID format raises error."""
-        mock_payload = {"sub": "not-a-valid-uuid"}
+    def test_get_user_id_any_string_format(self):
+        """Test user ID extraction accepts any string format (Better Auth compatibility)."""
+        # Better Auth uses nanoid-style string IDs, so any string is valid
+        mock_payload = {"sub": "any-string-format-works"}
 
         with patch.object(TokenService, "decode_token", return_value=mock_payload):
             service = TokenService()
-            with pytest.raises(TokenValidationError) as exc:
-                service.get_user_id("test_token")
+            result = service.get_user_id("test_token")
 
-            assert "Invalid user ID format" in str(exc.value)
+            # Should return the string as-is without validation
+            assert result == "any-string-format-works"
 
     def test_get_user_email_success(self):
         """Test successful email extraction."""

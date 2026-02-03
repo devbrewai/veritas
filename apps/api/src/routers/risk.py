@@ -91,7 +91,7 @@ async def scan_adverse_media(
 async def scan_document_adverse_media(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id),
+    user_id: str = Depends(get_current_user_id),
 ) -> AdverseMediaResponse:
     """Scan for adverse media based on document extracted data.
 
@@ -187,7 +187,7 @@ async def score_risk(request: RiskScoringRequest) -> RiskScoringResponse:
 async def score_screening_result(
     screening_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id),
+    user_id: str = Depends(get_current_user_id),
 ) -> RiskScoringResponse:
     """Score risk for an existing screening result.
 

@@ -1,7 +1,6 @@
 """Rate limiting middleware for upload endpoints."""
 
 import logging
-from uuid import UUID
 
 from cachetools import TTLCache
 from fastapi import Depends, HTTPException, status
@@ -34,16 +33,16 @@ class RateLimiter:
             ttl=window_seconds,
         )
 
-    def check(self, user_id: UUID) -> bool:
+    def check(self, user_id: str) -> bool:
         """Check if user is within rate limit.
 
         Args:
-            user_id: User's UUID.
+            user_id: User's ID string.
 
         Returns:
             True if request is allowed, False if rate limited.
         """
-        key = str(user_id)
+        key = user_id
         current_count = self._cache.get(key, 0)
 
         if current_count >= self.max_requests:
@@ -54,26 +53,26 @@ class RateLimiter:
         self._cache[key] = current_count + 1
         return True
 
-    def get_remaining(self, user_id: UUID) -> int:
+    def get_remaining(self, user_id: str) -> int:
         """Get remaining requests for user.
 
         Args:
-            user_id: User's UUID.
+            user_id: User's ID string.
 
         Returns:
             Number of remaining requests in current window.
         """
-        key = str(user_id)
+        key = user_id
         current_count = self._cache.get(key, 0)
         return max(0, self.max_requests - current_count)
 
-    def reset(self, user_id: UUID) -> None:
+    def reset(self, user_id: str) -> None:
         """Reset rate limit for a user (for testing).
 
         Args:
-            user_id: User's UUID.
+            user_id: User's ID string.
         """
-        key = str(user_id)
+        key = user_id
         if key in self._cache:
             del self._cache[key]
 
@@ -86,8 +85,8 @@ upload_rate_limiter = RateLimiter(
 
 
 async def check_rate_limit(
-    user_id: UUID = Depends(get_current_user_id),
-) -> UUID:
+    user_id: str = Depends(get_current_user_id),
+) -> str:
     """FastAPI dependency to check rate limit.
 
     Args:

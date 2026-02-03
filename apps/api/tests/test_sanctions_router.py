@@ -3,15 +3,22 @@ API tests for sanctions screening endpoints.
 """
 
 import pytest
+import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from uuid import UUID
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from main import app
+from src.database import get_db
 from src.dependencies.auth import get_current_user_id
+from src.models import Base
 from src.services.sanctions import sanctions_screening_service
 
 # Fixed test user ID for consistent testing
-TEST_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
+# Better Auth uses nanoid-style string IDs
+TEST_USER_ID = "test-user-001"
+
+# Test database URL
+TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -25,9 +32,55 @@ def initialize_service():
 async def client():
     """Create async test client with auth dependency override."""
 
-    async def override_get_current_user_id() -> UUID:
+    async def override_get_current_user_id() -> str:
         return TEST_USER_ID
 
+    app.dependency_overrides[get_current_user_id] = override_get_current_user_id
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        yield client
+
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def db_engine():
+    """Create test database engine."""
+    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield engine
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def db_session(db_engine) -> AsyncSession:
+    """Create test database session."""
+    async_session_maker = async_sessionmaker(
+        db_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+    async with async_session_maker() as session:
+        yield session
+
+
+@pytest_asyncio.fixture
+async def db_client(db_session: AsyncSession):
+    """Create async test client with database and auth dependency overrides."""
+
+    async def override_get_db():
+        yield db_session
+
+    async def override_get_current_user_id() -> str:
+        return TEST_USER_ID
+
+    app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user_id] = override_get_current_user_id
 
     async with AsyncClient(
@@ -211,17 +264,17 @@ class TestDocumentScreenEndpoint:
     """Tests for POST /v1/screening/document/{document_id} endpoint."""
 
     @pytest.mark.asyncio
-    async def test_screen_nonexistent_document(self, client):
+    async def test_screen_nonexistent_document(self, db_client):
         """Should return 404 for nonexistent document."""
         fake_id = "00000000-0000-0000-0000-000000000000"
-        response = await client.post(f"/v1/screening/document/{fake_id}")
+        response = await db_client.post(f"/v1/screening/document/{fake_id}")
 
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_screen_invalid_uuid(self, client):
+    async def test_screen_invalid_uuid(self, db_client):
         """Should reject invalid UUID."""
-        response = await client.post("/v1/screening/document/invalid-uuid")
+        response = await db_client.post("/v1/screening/document/invalid-uuid")
 
         assert response.status_code == 422  # Validation error
 

@@ -276,7 +276,7 @@ class SanctionsScreeningService:
         self,
         document_id: UUID,
         db: AsyncSession,
-        user_id: UUID | None = None,
+        user_id: str | None = None,
     ) -> SanctionsScreeningResult:
         """
         Screen names extracted from a processed document.

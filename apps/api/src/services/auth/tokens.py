@@ -5,7 +5,6 @@ the public keys from the JWKS endpoint and verifying token signatures.
 """
 
 import logging
-from uuid import UUID
 
 import jwt
 from jwt.exceptions import InvalidTokenError, PyJWKClientError
@@ -69,14 +68,14 @@ class TokenService:
             logger.warning(f"Token validation failed: {e}")
             raise TokenValidationError(str(e))
 
-    def get_user_id(self, token: str) -> UUID:
+    def get_user_id(self, token: str) -> str:
         """Extract user ID from token.
 
         Args:
             token: JWT string.
 
         Returns:
-            User UUID from the token's 'sub' claim.
+            User ID string from the token's 'sub' claim.
 
         Raises:
             TokenValidationError: If token is invalid or missing user ID.
@@ -87,10 +86,7 @@ class TokenService:
         if not user_id:
             raise TokenValidationError("Token missing user ID (sub claim)")
 
-        try:
-            return UUID(user_id)
-        except ValueError as e:
-            raise TokenValidationError(f"Invalid user ID format: {e}")
+        return user_id
 
     def get_user_email(self, token: str) -> str | None:
         """Extract user email from token if present.

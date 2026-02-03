@@ -145,7 +145,7 @@ class AdverseMediaService:
         document_id: UUID,
         db: AsyncSession,
         max_results: int = 10,
-        user_id: UUID | None = None,
+        user_id: str | None = None,
     ) -> AdverseMediaResult:
         """Scan names from a processed document.
 

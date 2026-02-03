@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import AsyncGenerator
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
@@ -17,7 +17,8 @@ from src.models import Base
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 # Fixed test user ID for consistent testing
-TEST_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
+# Better Auth uses nanoid-style string IDs, not UUIDs
+TEST_USER_ID = "test-user-001"
 
 
 @pytest.fixture(scope="session")
@@ -60,7 +61,7 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     async def override_get_db():
         yield db_session
 
-    async def override_get_current_user_id() -> UUID:
+    async def override_get_current_user_id() -> str:
         return TEST_USER_ID
 
     app.dependency_overrides[get_db] = override_get_db
@@ -76,12 +77,12 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
 
 @pytest.fixture
-def test_user_id() -> UUID:
+def test_user_id() -> str:
     """Return the test user ID for assertions."""
     return TEST_USER_ID
 
 
 @pytest.fixture
-def other_user_id() -> UUID:
+def other_user_id() -> str:
     """Return a different user ID for multi-tenancy tests."""
-    return UUID("00000000-0000-0000-0000-000000000002")
+    return "test-user-002"

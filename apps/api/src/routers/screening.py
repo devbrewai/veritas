@@ -113,7 +113,7 @@ async def screen_names_batch(
 async def screen_document(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id),
+    user_id: str = Depends(get_current_user_id),
 ) -> SanctionsScreenResponse:
     """
     Screen names extracted from a processed document.
