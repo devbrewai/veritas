@@ -57,29 +57,66 @@ uv add <package>
 uv add --dev <package>  # Dev dependency
 ```
 
-### Frontend (apps/web) - To be implemented
+### Frontend (apps/web)
 
 ```bash
 cd apps/web
+
+# Install dependencies
 bun install
+
+# Run development server
 bun dev
+
+# Build for production (REQUIRED before commits)
+bun run build
+
+# Lint
+bun lint
 ```
+
+### Using Makefile (Recommended)
+
+```bash
+# From project root
+make setup        # Setup entire project
+make dev          # Run both API and Web servers
+make api-test     # Run API tests
+make web-build    # Build web app
+```
+
+## Testing Requirements
+
+**IMPORTANT: Always test before committing changes.**
+
+### API Changes
+```bash
+cd apps/api && uv run pytest
+```
+
+### Frontend Changes
+```bash
+cd apps/web && bun run build
+```
+
+**Rule:** For any frontend-related changes (components, pages, lib files, config), you MUST run `bun run build` successfully before committing. TypeScript errors caught during build must be fixed before the commit.
 
 ## Tech Stack
 
-**Backend:** Python 3.12, FastAPI, PostgreSQL, Redis
+**Backend:** Python 3.12, FastAPI, PostgreSQL
 **Document Processing:** Tesseract OCR, pytesseract, OpenCV, Pillow
 **MRZ Parsing:** mrz library for passport Machine Readable Zone
-**ML/Risk Scoring:** LightGBM, SHAP (to be added)
-**Auth:** Better Auth (to be added)
-**Frontend:** Next.js 14, Tailwind CSS, Shadcn/UI (to be built)
+**ML/Risk Scoring:** LightGBM, SHAP
+**Auth:** Better Auth (Next.js) + JWT validation (FastAPI via JWKS)
+**Frontend:** Next.js 16, React 19, Tailwind CSS, shadcn/ui
 
 ## Architecture Notes
 
-- Multi-tenant design: all database queries must filter by `user_id` (to be added in Day 5)
-- Document processing is synchronous for Day 1 (will be async in Day 6)
-- OCR pipeline: preprocess → detect MRZ region → extract text → parse MRZ
-- Passport parser uses TD3 format (2 lines × 44 characters)
+- **Multi-tenant design:** All database queries filter by `user_id` extracted from JWT
+- **Auth flow:** Better Auth (Next.js) issues JWT → FastAPI validates via JWKS
+- **Document processing:** Currently synchronous (async processing in Day 6)
+- **OCR pipeline:** preprocess → detect MRZ region → extract text → parse MRZ
+- **Passport parser:** Uses TD3 format (2 lines × 44 characters)
 
 ## Current API Endpoints
 
