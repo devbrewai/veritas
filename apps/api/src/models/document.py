@@ -18,13 +18,12 @@ class Document(Base):
         default=uuid.uuid4,
     )
 
-    # Multi-tenant isolation - will be added in Day 5 with auth
-    # user_id: Mapped[uuid.UUID] = mapped_column(
-    #     UUID(as_uuid=True),
-    #     ForeignKey("users.id"),
-    #     nullable=False,
-    #     index=True,
-    # )
+    # Multi-tenant isolation - user ID from Better Auth JWT
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        nullable=False,
+        index=True,
+    )
 
     customer_id: Mapped[str | None] = mapped_column(
         String(255),

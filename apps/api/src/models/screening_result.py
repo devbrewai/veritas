@@ -20,13 +20,12 @@ class ScreeningResult(Base):
         default=uuid.uuid4,
     )
 
-    # Multi-tenant isolation (uncomment in Day 5 with auth)
-    # user_id: Mapped[uuid.UUID] = mapped_column(
-    #     Uuid,
-    #     ForeignKey("users.id"),
-    #     nullable=False,
-    #     index=True,
-    # )
+    # Multi-tenant isolation - user ID from Better Auth JWT
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        nullable=False,
+        index=True,
+    )
 
     # Link to source document (optional - may screen without document)
     document_id: Mapped[uuid.UUID | None] = mapped_column(
