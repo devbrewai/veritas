@@ -1,36 +1,124 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Veritas Web
 
-## Getting Started
+Next.js frontend for the Veritas KYC/AML automation platform with Better Auth authentication.
 
-First, run the development server:
+## Quick Start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
+# Install dependencies
+bun install
+
+# Run development server
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app will be available at `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Prerequisites
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Node.js 18+ or Bun
+- PostgreSQL (shared with API via `DATABASE_URL`)
 
-## Learn More
+## Environment Variables
 
-To learn more about Next.js, take a look at the following resources:
+Create a `.env.local` file:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+# Database (required - shared with API)
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/veritas
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Better Auth (required)
+BETTER_AUTH_URL=http://localhost:3000
+BETTER_AUTH_SECRET=your-secret-key-min-32-chars
 
-## Deploy on Vercel
+# Optional
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Authentication
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This app uses [Better Auth](https://www.better-auth.com) with the JWT plugin for authentication:
+
+- **Email/Password**: Users register and login with email + password
+- **JWT Tokens**: Issued via the `/api/auth/token` endpoint
+- **JWKS**: Public keys available at `/api/auth/jwks` for API validation
+
+### Auth Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `/api/auth/sign-up/email` | Register new user |
+| `/api/auth/sign-in/email` | Login with email/password |
+| `/api/auth/sign-out` | Logout |
+| `/api/auth/token` | Get JWT token for API calls |
+| `/api/auth/jwks` | JWKS endpoint for token validation |
+
+## Pages
+
+| Route | Description |
+|-------|-------------|
+| `/` | Home page |
+| `/login` | User login |
+| `/register` | User registration |
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── api/auth/[...all]/   # Better Auth API handler
+│   ├── login/               # Login page
+│   ├── register/            # Registration page
+│   └── page.tsx             # Home page
+├── components/
+│   ├── auth/                # Auth form components
+│   └── ui/                  # shadcn/ui components
+└── lib/
+    ├── auth.ts              # Better Auth server config
+    └── auth-client.ts       # Better Auth React client
+```
+
+## Using with the API
+
+1. Register/login to get authenticated
+2. Get a JWT token via the auth client
+3. Include the token in API requests:
+
+```typescript
+import { authClient } from '@/lib/auth-client';
+
+const token = await authClient.token();
+
+const response = await fetch('http://localhost:8000/v1/documents/upload', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+  },
+  body: formData,
+});
+```
+
+## Tech Stack
+
+- **Framework**: Next.js 15 with App Router
+- **Auth**: Better Auth with JWT plugin
+- **Database**: PostgreSQL (via pg driver)
+- **Styling**: Tailwind CSS
+- **Components**: shadcn/ui (Radix primitives)
+- **Package Manager**: Bun
+
+## Development
+
+```bash
+# Run dev server
+bun dev
+
+# Build for production
+bun build
+
+# Start production server
+bun start
+
+# Lint
+bun lint
+```
