@@ -13,7 +13,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.config import get_settings
 from src.database import engine
 from src.models import Base
-from src.routers import documents_router, health_router, risk_router, screening_router
+from src.routers import (
+    documents_router,
+    health_router,
+    kyc_router,
+    risk_router,
+    screening_router,
+)
 from src.services.adverse_media import adverse_media_service
 from src.services.risk.scorer import risk_scoring_service
 from src.services.sanctions import sanctions_screening_service
@@ -62,6 +68,7 @@ app.add_middleware(
 # Include routers
 app.include_router(health_router)
 app.include_router(documents_router, prefix=settings.API_V1_PREFIX)
+app.include_router(kyc_router, prefix=settings.API_V1_PREFIX)
 app.include_router(screening_router, prefix=settings.API_V1_PREFIX)
 app.include_router(risk_router, prefix=settings.API_V1_PREFIX)
 
