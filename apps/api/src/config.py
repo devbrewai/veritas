@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     SANCTIONS_PICKLE_PATH: str = "./models/sanctions_screener.pkl"
     SANCTIONS_ENABLED: bool = True
 
+    # Authentication (Better Auth JWT validation)
+    BETTER_AUTH_URL: str = "http://localhost:3000"
+    JWKS_CACHE_TTL: int = 3600  # Cache JWKS for 1 hour
+
 
 @lru_cache
 def get_settings() -> Settings:
