@@ -21,9 +21,11 @@ dist/
 .idea/
 *.swp
 
-# Env
+# Env (keep .env.example)
 .env
 .env.local
+.env*.local
+!.env.example
 
 # OS
 .DS_Store
@@ -33,6 +35,15 @@ uploads/
 
 # Test cache
 .pytest_cache/
+htmlcov/
+.coverage
 
 # Test sample images - personal passport (contains real PII)
 apps/api/tests/sample_images/passport.jpg
+
+# Docker volumes (if using local data)
+postgres_data/
+
+# Logs
+*.log
+logs/

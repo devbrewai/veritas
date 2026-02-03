@@ -121,9 +121,9 @@ Veritas automates the entire KYC pipeline:
 
 - Backend: Render.com (Python web service)
 - Frontend: Vercel
-- Database: Render PostgreSQL (free tier: 1GB)
+- Database: Neon PostgreSQL (serverless, free tier: 512MB, branching, connection pooling)
 - Redis: Render Redis (free tier: 25MB)
-- Auth DB: Option 1 - Same Render Postgres (simpler), Option 2 - Neon (serverless)
+- Auth & App share same Neon database (Better Auth manages its own tables)
 
 ---
 
@@ -512,38 +512,41 @@ Response (200 OK):
 
 **Tasks:**
 
-- [ ] Install Better Auth (`npm install better-auth`)
-- [ ] Configure Better Auth with Postgres:
+- [x] Install Better Auth (`bun add better-auth`)
+- [x] Configure Better Auth with JWT plugin and PostgreSQL:
+  - Server config at `apps/web/src/lib/auth.ts`
+  - Client config at `apps/web/src/lib/auth-client.ts`
+  - JWT plugin with EdDSA/Ed25519 algorithm
+  - JWKS endpoint at `/api/auth/jwks`
+- [x] Create users table (Better Auth auto-creates: user, account, session, verification, jwks)
+- [x] Implement registration endpoint (`/api/auth/sign-up/email`)
+- [x] Implement login endpoint (`/api/auth/sign-in/email`)
+- [x] Add JWT validation in FastAPI:
+  - JWKS fetcher service (`src/services/auth/jwks.py`)
+  - Token validation service (`src/services/auth/tokens.py`)
+  - Auth dependency (`src/dependencies/auth.py`)
+  - Validates JWT via JWKS without calling Better Auth
+- [x] Add `user_id` column to Document and ScreeningResult models
+- [x] Update all queries to filter by user_id:
+  - Document endpoints (upload, get)
+  - Screening endpoints (document screening)
+  - Risk endpoints (adverse media, risk scoring)
+- [x] Test multi-tenant data isolation (9 tests in `test_multi_tenancy.py`)
 
-  ```typescript
-  import { betterAuth } from "better-auth";
-
-  export const auth = betterAuth({
-    database: {
-      provider: "postgres",
-      url: process.env.DATABASE_URL,
-    },
-    emailAndPassword: {
-      enabled: true,
-    },
-  });
-  ```
-
-- [ ] Create users table (Better Auth auto-creates schema)
-- [ ] Implement registration endpoint (/auth/register)
-- [ ] Implement login endpoint (/auth/login)
-- [ ] Add JWT middleware to protect routes
-- [ ] Update all queries to filter by user_id:
-  ```sql
-  SELECT * FROM documents WHERE user_id = :current_user_id
-  ```
-- [ ] Test multi-tenant data isolation (create 2 users, verify separation)
+**Architecture:**
+```
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│   Next.js App   │────▶│   Better Auth    │────▶│  FastAPI API    │
+│   (Frontend)    │     │   (JWT + JWKS)   │     │ (Validates JWT) │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+```
 
 **Deliverables:**
 
-- Working auth system
-- Multi-tenant data isolation
-- Protected API endpoints
+- [x] Working auth system (Better Auth in Next.js)
+- [x] Multi-tenant data isolation (user_id filtering)
+- [x] Protected API endpoints (JWT Bearer tokens)
+- [x] 326 tests passing (including 9 isolation tests)
 
 ### Day 6: API Endpoints + Background Processing
 
@@ -617,8 +620,8 @@ Response (200 OK):
 - [ ] Adverse media search completes in <5 seconds
 - [ ] End-to-end KYC processing in <15 seconds total
 - [ ] Risk tier accuracy >80% on validation set (synthetic data)
-- [ ] Multi-tenant isolation verified (users can't see each other's data)
-- [ ] Auth system working (register, login, protected routes)
+- [x] Multi-tenant isolation verified (users can't see each other's data) - 9 tests in `test_multi_tenancy.py`
+- [x] Auth system working (register, login, protected routes) - Better Auth + JWT validation
 
 ### Non-Functional Requirements
 
@@ -634,9 +637,9 @@ Response (200 OK):
 
 ### Security Requirements
 
-- [ ] Passwords hashed (bcrypt, handled by Better Auth)
-- [ ] JWT tokens with expiration (7 days)
-- [ ] Row-level security (all queries filter by user_id)
+- [x] Passwords hashed (bcrypt, handled by Better Auth)
+- [x] JWT tokens with expiration (7 days, EdDSA/Ed25519 signed)
+- [x] Row-level security (all queries filter by user_id)
 - [ ] File upload validation (max 10MB, allowed types only)
 - [ ] Rate limiting (prevent abuse)
 - [ ] HTTPS only (enforced by Render + Vercel)
@@ -852,11 +855,11 @@ with the same team size."
 
 ### From Veritas to Meridian (To Be Reused)
 
-- Better Auth setup and configuration
-- Multi-tenant data schema patterns
-- Protected route middleware
-- User registration/login UI components
-- Dashboard layout components
+- ✅ Better Auth setup and configuration (JWT plugin, JWKS)
+- ✅ Multi-tenant data schema patterns (user_id on all tables)
+- ✅ Protected route middleware (FastAPI JWT validation via JWKS)
+- User registration/login UI components (basic forms created)
+- Dashboard layout components (to be built in Day 7)
 
 ---
 
