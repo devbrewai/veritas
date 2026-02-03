@@ -4,6 +4,16 @@ from src.schemas.adverse_media import (
     AdverseMediaResult,
     SentimentCategory,
 )
+from src.schemas.kyc import (
+    KYCAdverseMediaResult,
+    KYCBatchRequest,
+    KYCBatchResponse,
+    KYCDocumentSummary,
+    KYCResult,
+    KYCRiskResult,
+    KYCSanctionsResult,
+    KYCStatus,
+)
 from src.schemas.business_document import (
     BusinessDocumentData,
     BusinessDocumentExtractionResult,
@@ -43,6 +53,15 @@ __all__ = [
     "AdverseMediaData",
     "AdverseMediaResult",
     "SentimentCategory",
+    # KYC
+    "KYCAdverseMediaResult",
+    "KYCBatchRequest",
+    "KYCBatchResponse",
+    "KYCDocumentSummary",
+    "KYCResult",
+    "KYCRiskResult",
+    "KYCSanctionsResult",
+    "KYCStatus",
     # Business Document
     "BusinessDocumentData",
     "BusinessDocumentExtractionResult",
