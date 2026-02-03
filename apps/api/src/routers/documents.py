@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.config import get_settings
 from src.database import get_db
 from src.dependencies.auth import get_current_user_id
+from src.middleware.rate_limit import check_rate_limit
 from src.models.document import Document
 from src.schemas.document import DocumentResponse, DocumentUploadResponse
 from src.services.ocr import (
@@ -367,9 +368,11 @@ async def upload_document(
     customer_id: str | None = Form(default=None),
     document_type: str = Form(default="passport"),
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id),
+    user_id: UUID = Depends(check_rate_limit),
 ) -> DocumentUploadResponse:
     """Upload and process a document.
+
+    Rate limited to 10 uploads per minute per user.
 
     Args:
         file: The document file (image or PDF).
@@ -379,6 +382,9 @@ async def upload_document(
 
     Returns:
         DocumentUploadResponse with document ID and processing status.
+
+    Raises:
+        HTTPException: 429 Too Many Requests if rate limit exceeded.
     """
     # Validate file
     if not file.filename:

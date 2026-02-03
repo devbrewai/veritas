@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     BETTER_AUTH_URL: str = "http://localhost:3000"
     JWKS_CACHE_TTL: int = 3600  # Cache JWKS for 1 hour
 
+    # Rate Limiting
+    RATE_LIMIT_UPLOADS_PER_MINUTE: int = 10
+
 
 @lru_cache
 def get_settings() -> Settings:
