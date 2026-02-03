@@ -19,6 +19,7 @@ from src.routers import (
     kyc_router,
     risk_router,
     screening_router,
+    users_router,
 )
 from src.services.adverse_media import adverse_media_service
 from src.services.risk.scorer import risk_scoring_service
@@ -71,6 +72,7 @@ app.include_router(documents_router, prefix=settings.API_V1_PREFIX)
 app.include_router(kyc_router, prefix=settings.API_V1_PREFIX)
 app.include_router(screening_router, prefix=settings.API_V1_PREFIX)
 app.include_router(risk_router, prefix=settings.API_V1_PREFIX)
+app.include_router(users_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/")
