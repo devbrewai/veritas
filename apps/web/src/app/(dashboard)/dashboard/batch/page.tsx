@@ -26,7 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { batchKYC } from "@/lib/api/client";
-import type { KYCBatchResponse, KYCResult } from "@/lib/types/api";
+import type { KYCBatchResponse } from "@/lib/types/api";
 
 const statusIcons = {
   pending: Clock,

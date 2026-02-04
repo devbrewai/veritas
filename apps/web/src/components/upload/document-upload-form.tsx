@@ -35,7 +35,6 @@ export function DocumentUploadForm() {
   const [documentType, setDocumentType] = useState<DocumentType>("passport");
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [uploadedDocumentId, setUploadedDocumentId] = useState<string | null>(null);
 
   const canSubmit = file && customerId.trim() && documentType && status !== "uploading";
 
@@ -55,7 +54,6 @@ export function DocumentUploadForm() {
 
       if (response.status === "completed" || response.status === "processing") {
         setStatus("success");
-        setUploadedDocumentId(response.document_id);
         // Redirect to results after short delay
         setTimeout(() => {
           router.push(`/dashboard/results/${encodeURIComponent(customerId.trim())}`);
@@ -75,7 +73,6 @@ export function DocumentUploadForm() {
     setDocumentType("passport");
     setStatus("idle");
     setError(null);
-    setUploadedDocumentId(null);
   };
 
   return (

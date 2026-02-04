@@ -43,7 +43,7 @@ export function LoginForm() {
       }
 
       router.push("/");
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred");
       setIsLoading(false);
     }

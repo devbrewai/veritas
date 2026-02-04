@@ -6,9 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   Shield,
-  Zap,
   BarChart3,
-  CheckCircle,
   FileText,
 } from "lucide-react";
 import { useSession } from "@/lib/auth-client";
