@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     # API
     API_V1_PREFIX: str = "/v1"
     DEBUG: bool = False
+    ALLOWED_ORIGINS: str = "http://localhost:3000"  # Comma-separated for multiple origins
 
     # Sanctions Screening
     SANCTIONS_PICKLE_PATH: str = "./models/sanctions_screener.pkl"
