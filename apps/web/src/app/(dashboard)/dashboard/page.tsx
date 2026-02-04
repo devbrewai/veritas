@@ -1,5 +1,6 @@
 import { StatsCards } from "@/components/dashboard/stats-cards";
 import { QuickActions } from "@/components/dashboard/quick-actions";
+import { SavingsCalculator } from "@/components/comparison/savings-calculator";
 
 export default function DashboardPage() {
   return (
@@ -26,43 +27,55 @@ export default function DashboardPage() {
           <StatsCards />
         </div>
 
-        {/* Getting Started Section */}
-        <div className="rounded-sm border border-gray-200 bg-white p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Getting Started
-          </h3>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <div className="flex items-center justify-center w-10 h-10 rounded-sm bg-gray-100 text-gray-600 font-semibold">
-                1
+        {/* Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Getting Started Section */}
+          <div className="rounded-sm border border-gray-200 bg-white p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Getting Started
+            </h3>
+            <div className="space-y-4">
+              <div className="flex gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-sm bg-gray-100 text-gray-600 font-semibold flex items-center justify-center">
+                  1
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">Upload Documents</h4>
+                  <p className="text-sm text-gray-600">
+                    Upload passport, utility bill, or business registration documents
+                    for KYC processing.
+                  </p>
+                </div>
               </div>
-              <h4 className="font-medium text-gray-900">Upload Documents</h4>
-              <p className="text-sm text-gray-600">
-                Upload passport, utility bill, or business registration documents
-                for KYC processing.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-center w-10 h-10 rounded-sm bg-gray-100 text-gray-600 font-semibold">
-                2
+              <div className="flex gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-sm bg-gray-100 text-gray-600 font-semibold flex items-center justify-center">
+                  2
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">Automatic Processing</h4>
+                  <p className="text-sm text-gray-600">
+                    Documents are automatically extracted, screened against sanctions
+                    lists, and scored for risk.
+                  </p>
+                </div>
               </div>
-              <h4 className="font-medium text-gray-900">Automatic Processing</h4>
-              <p className="text-sm text-gray-600">
-                Documents are automatically extracted, screened against sanctions
-                lists, and scored for risk.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-center w-10 h-10 rounded-sm bg-gray-100 text-gray-600 font-semibold">
-                3
+              <div className="flex gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-sm bg-gray-100 text-gray-600 font-semibold flex items-center justify-center">
+                  3
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">View Results</h4>
+                  <p className="text-sm text-gray-600">
+                    Review KYC results with risk tier, recommendation, and detailed
+                    explanations.
+                  </p>
+                </div>
               </div>
-              <h4 className="font-medium text-gray-900">View Results</h4>
-              <p className="text-sm text-gray-600">
-                Review KYC results with risk tier, recommendation, and detailed
-                explanations.
-              </p>
             </div>
           </div>
+
+          {/* ROI Calculator */}
+          <SavingsCalculator />
         </div>
       </div>
     </div>
