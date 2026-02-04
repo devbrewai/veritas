@@ -27,6 +27,7 @@ router = APIRouter(prefix="/screening", tags=["screening"])
 @router.post("/sanctions", response_model=SanctionsScreenResponse)
 async def screen_name(
     request: SanctionsScreenRequest,
+    user_id: str = Depends(get_current_user_id),
 ) -> SanctionsScreenResponse:
     """
     Screen a single name against sanctions lists.
@@ -62,6 +63,7 @@ async def screen_name(
 @router.post("/sanctions/batch", response_model=SanctionsBatchResponse)
 async def screen_names_batch(
     request: SanctionsBatchRequest,
+    user_id: str = Depends(get_current_user_id),
 ) -> SanctionsBatchResponse:
     """
     Screen multiple names against sanctions lists in batch.
