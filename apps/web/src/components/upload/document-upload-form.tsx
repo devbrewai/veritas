@@ -84,7 +84,7 @@ export function DocumentUploadForm() {
         <CardTitle>Upload Document</CardTitle>
         <CardDescription>
           Upload a document for KYC processing. Supports passport, utility bill,
-          business registration, and driver's license.
+          business registration, and driver&apos;s license.
         </CardDescription>
       </CardHeader>
       <CardContent>
