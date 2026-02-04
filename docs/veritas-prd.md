@@ -589,34 +589,35 @@ Response (200 OK):
 
 - [x] Next.js setup with Tailwind CSS (Next.js 16, Tailwind v4, shadcn/ui)
 - [x] Login/Register pages (Better Auth client with JWT plugin)
-- [ ] Protected dashboard route
-- [ ] Document upload form:
-  - Drag-and-drop file upload (React Dropzone)
-  - Customer ID input
-  - Document type selector
-  - Submit button
-- [ ] Processing status display:
-  - Progress bar or spinner
-  - Real-time status updates (polling or WebSocket)
-- [ ] Results dashboard:
-  - Extracted data card (passport details, utility bill info)
-  - Sanctions screening status (green checkmark or red warning)
-  - Adverse media summary (count, sample headlines)
-  - Risk tier badge (color-coded: green/yellow/red)
-  - Risk reasons (top 5 factors with contribution bars)
-  - Recommendation (Approve/Review/Reject)
-- [ ] Comparison table:
-  - Manual process: 48 hours, $150 per customer
-  - Veritas: 4 seconds, $45 per customer
-  - Savings calculator (based on volume)
-- [ ] Batch results view (table of processed customers)
-- [ ] Responsive design (mobile-friendly)
+- [x] Protected dashboard route (with auth redirect, session check)
+- [x] Document upload form:
+  - [x] Drag-and-drop file upload (React Dropzone)
+  - [x] Customer ID input
+  - [x] Document type selector
+  - [x] Submit button with loading state
+- [x] Processing status display:
+  - [x] Progress bar and spinner during upload
+  - [x] Success/error alerts with redirect
+- [x] Results dashboard:
+  - [x] Extracted data card (passport, utility bill, business docs with tabs)
+  - [x] Sanctions screening status (checkmark/warning with match details)
+  - [x] Adverse media summary (article count, sentiment analysis)
+  - [x] Risk tier badge (color-coded: green/amber/red)
+  - [x] Risk factors with directional indicators (trending up/down)
+  - [x] Recommendation badge (Approve/Review/Reject)
+- [x] Comparison table:
+  - [x] Manual process: 48 hours, $150 per customer
+  - [x] Veritas: 4 seconds, $45 per customer
+  - [x] Interactive ROI calculator with inputs
+- [x] Batch results view (table with status, risk tier, view links)
+- [x] Responsive design (mobile-first, breakpoints at sm/md/lg)
+- [x] Landing page with auth redirect and marketing content
 
 **Deliverables:**
 
-- Self-service demo UI
-- Professional appearance
-- Mobile responsive
+- [x] Self-service demo UI
+- [x] Professional appearance
+- [x] Mobile responsive
 
 ---
 
