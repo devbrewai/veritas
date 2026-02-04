@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useDropzone, type FileRejection } from "react-dropzone";
-import { Upload, X, FileText, Image } from "lucide-react";
+import { Upload, X, FileText, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -59,7 +59,7 @@ export function FileDropzone({ onFileSelect, file, disabled }: FileDropzoneProps
 
   const getFileIcon = (type: string) => {
     if (type.startsWith("image/")) {
-      return <Image className="h-8 w-8 text-gray-400" />;
+      return <ImageIcon className="h-8 w-8 text-gray-400" />;
     }
     return <FileText className="h-8 w-8 text-gray-400" />;
   };
