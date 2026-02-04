@@ -52,6 +52,7 @@ async def health_check() -> RiskServiceStatus:
 @router.post("/adverse-media", response_model=AdverseMediaResponse)
 async def scan_adverse_media(
     request: AdverseMediaRequest,
+    user_id: str = Depends(get_current_user_id),
 ) -> AdverseMediaResponse:
     """Scan for adverse media mentions of a name.
 
@@ -129,7 +130,10 @@ async def scan_document_adverse_media(
 
 
 @router.post("/score", response_model=RiskScoringResponse)
-async def score_risk(request: RiskScoringRequest) -> RiskScoringResponse:
+async def score_risk(
+    request: RiskScoringRequest,
+    user_id: str = Depends(get_current_user_id),
+) -> RiskScoringResponse:
     """Score risk from provided features.
 
     Takes risk features as input and returns a risk score with
