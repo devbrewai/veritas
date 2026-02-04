@@ -552,33 +552,43 @@ Response (200 OK):
 
 **Tasks:**
 
-- [ ] Document upload endpoint (/documents/upload)
-  - Store file in local storage or S3
-  - Create database record
-  - Trigger async processing
-- [ ] KYC results endpoint (/kyc/{customer_id})
-  - Aggregate document extraction + screening + risk assessment
-  - Return unified response
-- [ ] Batch processing endpoint (/kyc/batch)
-  - Accept multiple customers
-  - Process in background queue (Python asyncio or Celery)
-- [ ] User stats endpoint (/users/me/stats)
-- [ ] Error handling and validation (Pydantic models)
-- [ ] Rate limiting (10 uploads/min per user for demo)
-- [ ] API documentation (auto-generated Swagger UI)
+- [x] Document upload endpoint (/documents/upload)
+  - Stores file in local storage (`./uploads` directory)
+  - Creates database record with multi-tenant isolation
+  - Validates file type (jpg, jpeg, png, pdf) and size (max 10MB)
+  - Rate limited: 10 uploads per minute per user
+- [x] KYC results endpoint (/kyc/{customer_id})
+  - Aggregates document extraction + screening + risk assessment
+  - Returns unified KYCResult response with overall status
+  - Determines status: APPROVED, REJECTED, REVIEW, PENDING
+- [x] Batch processing endpoint (/kyc/batch)
+  - Accepts up to 10 customers per batch request
+  - Returns aggregated results with summary counts
+  - Note: Processing is synchronous (async queue deferred)
+- [x] User stats endpoint (/users/me/stats)
+  - Returns comprehensive metrics: documents by type, screenings by decision
+  - Monthly trends, risk tier distribution, average risk score
+- [x] Error handling and validation (Pydantic models)
+- [x] Rate limiting (10 uploads/min per user for demo)
+  - TTLCache-based in-memory rate limiter
+  - Returns 429 Too Many Requests with Retry-After header
+- [x] API documentation (auto-generated Swagger UI at /docs)
+- [ ] Async background processing (deferred to future iteration)
+  - Document processing remains synchronous for now
+  - Works for demo but won't scale for production workloads
 
 **Deliverables:**
 
-- Complete API with all endpoints
-- Async processing for scalability
-- API docs at /docs
+- [x] Complete API with all endpoints
+- [ ] Async processing for scalability (deferred)
+- [x] API docs at /docs
 
 ### Day 7: Demo UI
 
 **Tasks:**
 
-- [ ] Next.js setup with Tailwind CSS
-- [ ] Login/Register pages (Better Auth client)
+- [x] Next.js setup with Tailwind CSS (Next.js 16, Tailwind v4, shadcn/ui)
+- [x] Login/Register pages (Better Auth client with JWT plugin)
 - [ ] Protected dashboard route
 - [ ] Document upload form:
   - Drag-and-drop file upload (React Dropzone)
