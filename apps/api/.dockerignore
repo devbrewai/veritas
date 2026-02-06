@@ -1,0 +1,43 @@
+# Version control
+.git
+.gitignore
+
+# Virtual environments
+.venv/
+venv/
+.uv/
+
+# Environment files (secrets)
+.env
+.env.local
+.env*.local
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Uploaded files (runtime ephemeral, not baked into image)
+uploads/
+
+# Tests (not needed in production)
+tests/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+
+# OS files
+.DS_Store
+
+# Docker files
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Documentation
+README.md
