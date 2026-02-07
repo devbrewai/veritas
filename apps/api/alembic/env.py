@@ -5,7 +5,7 @@ from logging.config import fileConfig
 
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
 
@@ -61,13 +61,15 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
-    """In this scenario we need to create an Engine
-    and associate a connection with the context.
-    """
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
+    """Create an async engine and run migrations."""
+    engine_kwargs: dict = {"poolclass": pool.NullPool}
+
+    if settings.DATABASE_SSL_REQUIRED:
+        engine_kwargs["connect_args"] = {"ssl": True}
+
+    connectable = create_async_engine(
+        settings.DATABASE_URL,
+        **engine_kwargs,
     )
 
     async with connectable.connect() as connection:

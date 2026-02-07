@@ -6,10 +6,17 @@ from src.config import get_settings
 
 settings = get_settings()
 
+engine_kwargs: dict = {
+    "echo": settings.DEBUG,
+    "pool_pre_ping": True,
+}
+
+if settings.DATABASE_SSL_REQUIRED:
+    engine_kwargs["connect_args"] = {"ssl": True}
+
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=settings.DEBUG,
-    pool_pre_ping=True,
+    **engine_kwargs,
 )
 
 async_session_maker = async_sessionmaker(
