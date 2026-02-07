@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install uv package manager
 COPY --from=ghcr.io/astral-sh/uv:0.6 /uv /usr/local/bin/uv
 
-WORKDIR /build
+WORKDIR /app
 
 # Copy dependency files first for layer caching
 COPY pyproject.toml uv.lock ./
@@ -59,13 +59,13 @@ RUN groupadd --gid 1000 veritas && \
 WORKDIR /app
 
 # Copy virtual environment from builder
-COPY --from=builder /build/.venv /app/.venv
+COPY --from=builder /app/.venv /app/.venv
 
 # Copy application from builder
-COPY --from=builder /build/main.py /build/alembic.ini ./
-COPY --from=builder /build/src/ ./src/
-COPY --from=builder /build/alembic/ ./alembic/
-COPY --from=builder /build/models/ ./models/
+COPY --from=builder /app/main.py /app/alembic.ini ./
+COPY --from=builder /app/src/ ./src/
+COPY --from=builder /app/alembic/ ./alembic/
+COPY --from=builder /app/models/ ./models/
 
 # Create writable uploads directory
 RUN mkdir -p /app/uploads && chown -R veritas:veritas /app
@@ -94,4 +94,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 
 # Run migrations then start server
 # Using exec so uvicorn replaces the shell as PID 1 (proper signal handling)
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2 --log-level info --access-log --proxy-headers --forwarded-allow-ips='*'"]
+CMD ["sh", "-c", "python -m alembic upgrade head && exec python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WEB_CONCURRENCY:-1} --log-level info --access-log --proxy-headers --forwarded-allow-ips='*'"]
