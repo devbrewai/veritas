@@ -1,5 +1,7 @@
 from functools import lru_cache
+from typing import Any
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -42,6 +44,26 @@ class Settings(BaseSettings):
 
     # Rate Limiting
     RATE_LIMIT_UPLOADS_PER_MINUTE: int = 10
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def normalize_database_url(cls, value: Any) -> str:
+        """Normalize PostgreSQL URLs to asyncpg for SQLAlchemy async engine usage."""
+        if not isinstance(value, str):
+            raise ValueError("DATABASE_URL must be a string")
+
+        database_url = value.strip()
+        if database_url.startswith("postgres://"):
+            return f"postgresql+asyncpg://{database_url[len('postgres://'):]}"
+
+        if database_url.startswith("postgresql://"):
+            return f"postgresql+asyncpg://{database_url[len('postgresql://'):]}"
+
+        scheme, separator, remainder = database_url.partition("://")
+        if scheme.startswith("postgresql+") and scheme != "postgresql+asyncpg" and separator:
+            return f"postgresql+asyncpg://{remainder}"
+
+        return database_url
 
 
 @lru_cache
