@@ -160,8 +160,8 @@ class TestModelTraining:
         )
 
         # Synthetic data should be easy to classify
-        # Expect at least 70% accuracy
-        assert metrics["accuracy"] >= 0.70
+        # Expect at least 80% accuracy
+        assert metrics["accuracy"] >= 0.80
 
     def test_saves_model_file(self, temp_model_path: str) -> None:
         """Test that model file is saved."""
