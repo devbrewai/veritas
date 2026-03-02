@@ -58,21 +58,27 @@ if settings.GOOGLE_VISION_ENABLED:
 def _build_success_response(
     parse_result: Any,
     provider: str,
+    quality_warnings: list[str] | None = None,
 ) -> dict[str, Any]:
     """Build success response from parse result.
 
     Args:
         parse_result: PassportExtractionResult from parser.
         provider: Name of OCR provider that succeeded.
+        quality_warnings: List of quality warnings.
 
     Returns:
         Response dictionary with extracted data.
     """
+    warnings = parse_result.warnings or []
+    if quality_warnings:
+        warnings = warnings + quality_warnings
+    
     return {
         "data": parse_result.data.model_dump(mode="json") if parse_result.data else None,
         "confidence": parse_result.confidence,
         "errors": parse_result.errors,
-        "warnings": parse_result.warnings,
+        "warnings": warnings,
         "ocr_provider": provider,
     }
 
@@ -120,9 +126,7 @@ def process_passport(file_path: Path) -> dict[str, Any]:
 
     if parse_result.success:
         logger.info("Passport extracted successfully with Tesseract (raw)")
-        result = _build_success_response(parse_result, "tesseract")
-        result["warnings"] = result.get("warnings", []) + quality_warnings
-        return result
+        return _build_success_response(parse_result, "tesseract", quality_warnings)
 
     last_result = parse_result
 
@@ -135,9 +139,7 @@ def process_passport(file_path: Path) -> dict[str, Any]:
 
     if parse_result.success:
         logger.info("Passport extracted successfully with Tesseract (preprocessed)")
-        result = _build_success_response(parse_result, "tesseract_preprocessed")
-        result["warnings"] = result.get("warnings", []) + quality_warnings
-        return result
+        return _build_success_response(parse_result, "tesseract_preprocessed", quality_warnings)
 
     last_result = parse_result
 
@@ -152,10 +154,7 @@ def process_passport(file_path: Path) -> dict[str, Any]:
 
         if parse_result.success:
             logger.info("Passport extracted successfully with Google Vision")
-            # return _build_success_response(parse_result, "google_vision")
-            result = _build_success_response(parse_result, "google_vision")
-            result["warnings"] = result.get("warnings", []) + quality_warnings
-            return result
+            return _build_success_response(parse_result, "google_vision", quality_warnings)
 
         last_result = parse_result
 
@@ -168,10 +167,7 @@ def process_passport(file_path: Path) -> dict[str, Any]:
 
         if parse_result.success:
             logger.info("Passport extracted successfully with Google Vision (bottom crop)")
-            # return _build_success_response(parse_result, "google_vision")
-            result = _build_success_response(parse_result, "google_vision")
-            result["warnings"] = result.get("warnings", []) + quality_warnings
-            return result
+            return _build_success_response(parse_result, "google_vision", quality_warnings)
 
         last_result = parse_result
 
@@ -181,7 +177,6 @@ def process_passport(file_path: Path) -> dict[str, Any]:
         "data": None,
         "confidence": last_result.confidence if last_result else 0.0,
         "errors": last_result.errors if last_result else ["All OCR strategies failed"],
-        # "warnings": [f"Tried strategies: {', '.join(strategies_tried)}"],
         "warnings": [f"Tried strategies: {', '.join(strategies_tried)}"] + quality_warnings,
         "ocr_provider": "none",
     }
@@ -247,9 +242,7 @@ def process_utility_bill(file_path: Path) -> dict[str, Any]:
 
     if parse_result.success:
         logger.info("Utility bill extracted successfully with Tesseract (preprocessed)")
-        result = _build_success_response(parse_result, "tesseract")
-        result["warnings"] = result.get("warnings", []) + quality_warnings
-        return result
+        return _build_success_response(parse_result, "tesseract", quality_warnings)
 
     last_result = parse_result
 
@@ -261,9 +254,7 @@ def process_utility_bill(file_path: Path) -> dict[str, Any]:
 
     if parse_result.success:
         logger.info("Utility bill extracted successfully with Tesseract (raw)")
-        result = _build_success_response(parse_result, "tesseract")
-        result["warnings"] = result.get("warnings", []) + quality_warnings
-        return result
+        return _build_success_response(parse_result, "tesseract", quality_warnings)
 
     last_result = parse_result
 
@@ -276,9 +267,7 @@ def process_utility_bill(file_path: Path) -> dict[str, Any]:
 
         if parse_result.success:
             logger.info("Utility bill extracted successfully with Google Vision")
-            result = _build_success_response(parse_result, "google_vision")
-            result["warnings"] = result.get("warnings", []) + quality_warnings
-            return result
+            return _build_success_response(parse_result, "google_vision", quality_warnings)
 
         last_result = parse_result
 
@@ -332,10 +321,8 @@ def process_business_document(file_path: Path) -> dict[str, Any]:
 
     if parse_result.success:
         logger.info("Business document extracted successfully with Tesseract (preprocessed)")
-        result = _build_success_response(parse_result, "tesseract")
-        result["warnings"] = result.get("warnings", []) + quality_warnings
-        return result
-
+        return _build_success_response(parse_result, "tesseract", quality_warnings)
+    
     last_result = parse_result
 
     # Strategy 2: Tesseract on raw image
@@ -346,9 +333,7 @@ def process_business_document(file_path: Path) -> dict[str, Any]:
 
     if parse_result.success:
         logger.info("Business document extracted successfully with Tesseract (raw)")
-        result = _build_success_response(parse_result, "tesseract")
-        result["warnings"] = result.get("warnings", []) + quality_warnings
-        return result
+        return _build_success_response(parse_result, "tesseract", quality_warnings)
 
     last_result = parse_result
 
@@ -361,9 +346,7 @@ def process_business_document(file_path: Path) -> dict[str, Any]:
 
         if parse_result.success:
             logger.info("Business document extracted successfully with Google Vision")
-            result = _build_success_response(parse_result, "google_vision")
-            result["warnings"] = result.get("warnings", []) + quality_warnings
-            return result
+            return _build_success_response(parse_result, "google_vision", quality_warnings)
 
         last_result = parse_result
 
