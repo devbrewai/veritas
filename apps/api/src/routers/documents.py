@@ -92,14 +92,20 @@ def process_passport(file_path: Path) -> dict[str, Any]:
         Dictionary with extracted data, confidence, errors, warnings, and provider.
     """
     # Load image
-    image = cv2.imread(str(file_path))
-    if image is None:
+    image, error = _load_image(file_path)
+    if error:
         return {
             "data": None,
             "confidence": 0.0,
-            "errors": ["Could not load image"],
+            "errors": [error],
             "ocr_provider": "none",
         }
+    
+    # Check image quality
+    quality = quality_checker.check_quality(image)
+    quality_warnings: list[str] = []
+    if not quality["is_acceptable"]:
+        quality_warnings = quality["suggestions"]
 
     # Detect MRZ region
     mrz_region = mrz_detector.detect_with_fallback(image)
@@ -114,7 +120,9 @@ def process_passport(file_path: Path) -> dict[str, Any]:
 
     if parse_result.success:
         logger.info("Passport extracted successfully with Tesseract (raw)")
-        return _build_success_response(parse_result, "tesseract")
+        result = _build_success_response(parse_result, "tesseract")
+        result["warnings"] = result.get("warnings", []) + quality_warnings
+        return result
 
     last_result = parse_result
 
@@ -127,7 +135,9 @@ def process_passport(file_path: Path) -> dict[str, Any]:
 
     if parse_result.success:
         logger.info("Passport extracted successfully with Tesseract (preprocessed)")
-        return _build_success_response(parse_result, "tesseract_preprocessed")
+        result = _build_success_response(parse_result, "tesseract_preprocessed")
+        result["warnings"] = result.get("warnings", []) + quality_warnings
+        return result
 
     last_result = parse_result
 
@@ -142,7 +152,10 @@ def process_passport(file_path: Path) -> dict[str, Any]:
 
         if parse_result.success:
             logger.info("Passport extracted successfully with Google Vision")
-            return _build_success_response(parse_result, "google_vision")
+            # return _build_success_response(parse_result, "google_vision")
+            result = _build_success_response(parse_result, "google_vision")
+            result["warnings"] = result.get("warnings", []) + quality_warnings
+            return result
 
         last_result = parse_result
 
@@ -155,7 +168,10 @@ def process_passport(file_path: Path) -> dict[str, Any]:
 
         if parse_result.success:
             logger.info("Passport extracted successfully with Google Vision (bottom crop)")
-            return _build_success_response(parse_result, "google_vision")
+            # return _build_success_response(parse_result, "google_vision")
+            result = _build_success_response(parse_result, "google_vision")
+            result["warnings"] = result.get("warnings", []) + quality_warnings
+            return result
 
         last_result = parse_result
 
@@ -165,7 +181,8 @@ def process_passport(file_path: Path) -> dict[str, Any]:
         "data": None,
         "confidence": last_result.confidence if last_result else 0.0,
         "errors": last_result.errors if last_result else ["All OCR strategies failed"],
-        "warnings": [f"Tried strategies: {', '.join(strategies_tried)}"],
+        # "warnings": [f"Tried strategies: {', '.join(strategies_tried)}"],
+        "warnings": [f"Tried strategies: {', '.join(strategies_tried)}"] + quality_warnings,
         "ocr_provider": "none",
     }
 
