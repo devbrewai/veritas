@@ -33,7 +33,7 @@ class AdverseMediaService:
 
     def __init__(
         self,
-        gdelt_timeout: float = 10.0,
+        gdelt_timeout: float = 5.0,
         gdelt_search_terms: list[str] | None = None,
     ) -> None:
         """Initialize the adverse media service.

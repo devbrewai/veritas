@@ -48,7 +48,7 @@ class GDELTClient:
 
     def __init__(
         self,
-        timeout: float = 10.0,
+        timeout: float = 5.0,
         search_terms: list[str] | None = None,
     ) -> None:
         """Initialize the GDELT client.
