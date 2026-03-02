@@ -1,30 +1,46 @@
 """KYC aggregation endpoints."""
 
 import logging
-from datetime import datetime
+import time
+import uuid
+from datetime import datetime, date, timedelta
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.config import get_settings
 from src.database import get_db
 from src.dependencies.auth import get_current_user_id
+from src.middleware.rate_limit import check_rate_limit
 from src.models.document import Document
 from src.models.screening_result import ScreeningResult
+from src.routers.documents import (
+    process_business_document,
+    process_passport,
+    process_utility_bill,
+)
 from src.schemas.kyc import (
     KYCAdverseMediaResult,
     KYCBatchRequest,
     KYCBatchResponse,
     KYCDocumentSummary,
+    KYCProcessResponse,
     KYCResult,
     KYCRiskResult,
     KYCSanctionsResult,
     KYCStatus,
 )
 
+from src.services.adverse_media import adverse_media_service
+from src.services.risk.scorer import risk_scoring_service
+from src.services.sanctions import sanctions_screening_service
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/kyc", tags=["kyc"])
+settings = get_settings()
 
 
 def _determine_overall_status(
@@ -176,6 +192,158 @@ async def _get_kyc_result(
         updated_at=updated_at,
     )
 
+@router.post("/process", response_model=KYCProcessResponse)
+async def process_kyc(
+    file: UploadFile = File(...),
+    customer_id: str = Form(...),
+    document_type: str = Form(default="passport"),
+    db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(check_rate_limit),
+) -> KYCProcessResponse:
+    """
+    Run the full KYC pipeline in a single request.
+
+    Chains: document upload/OCR -> sanctions screening -> adverse media scan -> risk scoring. 
+    Returns a unified result.
+
+    Rate limited to 10 requests per minute per user.
+    """
+    pipeline_start = time.time()
+    errors: list[str] = []
+
+    # Validate file
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
+    
+    ext = file.filename.split(".")[-1].lower()
+    if ext not in settings.ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File type '{ext}' not allowed. Allowed: {settings. ALLOWED_EXTENSIONS}",
+        )
+    
+    content = await file.read()
+    file_size = len(content)
+
+    if file_size > settings.MAX_FILE_SIZE_MB * 1024 * 1024:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Max size: {settings.MAX_FILE_SIZE_MB}MB",
+        )
+    
+    # Save file
+    doc_id = uuid.uuid4()
+    upload_dir = Path(settings.UPLOAD_DIR) / str(doc_id)
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    file_path = upload_dir / f"original.{ext}"
+
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    #  Step 1: OCR Extraction
+    ocr_result = None
+    supported_types = ["passport", "utility_bill", "business_reg"]
+    if document_type == "passport":
+        ocr_result = process_passport(file_path)
+    elif document_type == "utility_bill":
+        ocr_result = process_utility_bill(file_path)
+    elif document_type == "business_reg":
+        ocr_result = process_business_document(file_path)
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported document type: '{document_type}'. Supported: {supported_types}",
+        )
+    
+    extracted_data = ocr_result.get("data") if ocr_result else None
+    ocr_confidence = ocr_result.get("confidence") if ocr_result else None
+    doc_processed = extracted_data is not None
+
+    if not doc_processed:
+        ocr_errors = ocr_result.get("errors", []) if ocr_result else []
+        errors.extend(ocr_errors)
+    
+    #  Persist document
+    document = Document(
+        id=doc_id,
+        user_id=user_id,
+        customer_id=customer_id,
+        document_type=document_type,
+        file_path=str(file_path),
+        file_size_bytes=file_size,
+        processed=doc_processed,
+        extracted_data=extracted_data,
+        ocr_confidence=ocr_confidence,
+        processing_error="; ".join(errors) if errors else None,
+    )
+
+    if doc_processed and document_type == "passport" and extracted_data:
+        expiry_date_str = extracted_data.get("expiry_date")
+        if expiry_date_str:
+            try:
+                expiry_date = date.fromisoformat(expiry_date_str)
+                document.issue_date = expiry_date - timedelta(days=365 * 10)
+            except (ValueError, TypeError):
+                pass
+    
+    db.add(document)
+    await db.flush()
+
+    #  If OCR failed, return early with partial result
+    if not doc_processed:
+        await db.commit()
+        processing_time_ms = int((time.time() - pipeline_start) * 1000)
+        return KYCProcessResponse(
+            customer_id=customer_id,
+            document_id=doc_id,
+            document_processed=doc_processed,
+            errors=errors,
+            processing_time_ms=processing_time_ms,
+        )
+    
+    #  Step 2: Sanction Screening
+    sanctions_result_schema = None
+    screening_db_id = None
+
+    if sanctions_screening_service.is_loaded:
+        sanctions_result = await sanctions_screening_service.screen_document(
+            document_id=doc_id,
+            db=db,
+            user_id=user_id,
+        )
+        if sanctions_result.success and sanctions_result.data:
+            sanctions_result_schema = KYCSanctionsResult(
+                screening_id=uuid.uuid4(),
+                decision=sanctions_result.data.decision.value,
+                top_match_score=sanctions_result.confidence,
+                matched_name=(
+                    sanctions_result.data.top_match.matched_name
+                    if sanctions_result.data.top_match
+                    else None,
+                ),
+                screened_at=datetime.utcnow(),
+            )
+            # Find the screening result just created
+            sr_query = await db.execute(
+                select(ScreeningResult).where(
+                    ScreeningResult.document_id == doc_id,
+                    ScreeningResult.user_id == user_id,
+                ).order_by(ScreeningResult.screened_at.desc())
+            )
+            sr = sr_query.scalar_one_or_none()
+            if sr:
+                screening_db_id = sr.id
+                sanctions_result_schema.screening_id = sr.id
+        else:
+            errors.extend(sanctions_result.errors)
+    else:
+        errors.append("Sanctions screening service not available")
+
+    # TODO: Step 3: Adverse Media Scan
+
+    # TODO: Step 4: Risk Scoring
+
+    # TODO:  Determine overall status
 
 @router.get("/{customer_id}", response_model=KYCResult)
 async def get_kyc_result(
