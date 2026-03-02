@@ -205,7 +205,7 @@ def _load_image(file_path: Path) -> tuple[Any, str | None]:
             from PIL import Image
 
             register_heif_opener()
-            pil_image = Image.open(str(file_path).convert("RGB"))
+            pil_image = Image.open(str(file_path)).convert("RGB")
             image = np.array(pil_image)[:, :, ::-1].copy() # Convert to BGR for OpenCV
             return image, None
         except Exception:
