@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     # File Storage
     UPLOAD_DIR: str = "./uploads"
     MAX_FILE_SIZE_MB: int = 10
-    ALLOWED_EXTENSIONS: list[str] = ["jpg", "jpeg", "png", "pdf"]
+    ALLOWED_EXTENSIONS: list[str] = ["jpg", "jpeg", "png", "pdf", "heic", "heif"]
 
     # OCR - Tesseract
     TESSERACT_CMD: str | None = None  # Use system default if None

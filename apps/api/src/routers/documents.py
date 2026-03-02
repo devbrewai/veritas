@@ -6,6 +6,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import cv2
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
@@ -186,7 +187,7 @@ def _load_image(file_path: Path) -> tuple[Any, str | None]:
     """Load image from file path, handling PDF conversion.
 
     Args:
-        file_path: Path to the image or PDF file.
+        file_path: Path to the image, PDF, or HEIC file.
 
     Returns:
         Tuple of (image as numpy array, error message if failed).
@@ -196,6 +197,19 @@ def _load_image(file_path: Path) -> tuple[Any, str | None]:
         if image is None:
             return None, "Could not read PDF file"
         return image, None
+    
+    suffix = file_path.suffix.lower()
+    if suffix in (".heic", ".heif"):
+        try:
+            from pillow_heif import register_heif_opener
+            from PIL import Image
+
+            register_heif_opener()
+            pil_image = Image.open(str(file_path).convert("RGB"))
+            image = np.array(pil_image)[:, :, ::-1].copy() # Convert to BGR for OpenCV
+            return image, None
+        except Exception:
+            return None, "Could not read HEIC file"
 
     image = cv2.imread(str(file_path))
     if image is None:
