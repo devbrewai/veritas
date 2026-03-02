@@ -92,3 +92,27 @@ class KYCBatchResponse(BaseModel):
     total_review: int = 0
     total_rejected: int = 0
     total_pending: int = 0
+
+class KYCProcessRequest(BaseModel):
+    """Request for ent-to-end KYC processing."""
+
+    customer_id: str = Field(..., description="Unique customer identifier.")
+    document_type: str = Field(
+        default="passport",
+        description="Document type: passport, utility_bill, business_reg.",
+    )
+
+class KYCProcessResponse(BaseModel):
+    """Response for ent-to-end KYC processing."""
+
+    customer_id: str
+    document_id: UUID
+    document_processed: bool
+    extracted_data: dict[str, Any] | None = None
+    ocr_confidence: float | None = None
+    sanctions_screening: KYCSanctionsResult | None = None
+    adverse_media: KYCAdverseMediaResult | None = None
+    risk_assessment: KYCRiskResult | None = None
+    overall_status: KYCStatus = KYCStatus.PENDING
+    processing_time_ms: int = 0
+    errors: list[str] = Field(default_factory=list)
