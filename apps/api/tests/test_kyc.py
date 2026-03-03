@@ -485,4 +485,31 @@ class TestKYCProcessEndpoint:
         assert len(data["errors"]) > 0
 
         app.dependency_overrides.clear()
+    
+    @pytest.mark.asyncio
+    async def test_process_multi_tenant_isolation(self, db_session: AsyncSession):
+        """Documents created by /process are scoped to the authenticated user."""
+        # User A processes a document
+        async with create_client_for_user(db_session, USER_A_ID) as client:
+            resp_a = await client.post(
+                "/v1/kyc/process",
+                files={"file": ("test.jpg", b"not-a-real-image", "image/jpeg")},
+                data={
+                    "customer_id": "SHARED_CUST",
+                    "document_type": "passport",
+                },
+            )
+        assert resp_a.status_code == 200
+
+        app.dependency_overrides.clear()
+
+        # User B tries to see User A's document via KYC endpoint
+        async with create_client_for_user(db_session, USER_B_ID) as client:
+            resp_b = await client.get("/v1/kyc/SHARED_CUST")
+
+        assert resp_b.status_code == 200
+        data = resp_b.json()
+        assert data["documents"] == []
+
+        app.dependency_overrides.clear()
 
