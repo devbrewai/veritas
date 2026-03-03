@@ -461,3 +461,28 @@ class TestKYCProcessEndpoint:
         assert response.status_code == 400
         assert "not allowed" in response.json()["detail"]
         app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_process_returns_response_fields(self, db_session: AsyncSession):
+        """Response contains all expected fields even on OCR failure."""
+        async with create_client_for_user(db_session, USER_A_ID) as client:
+            response = await client.post(
+                "/v1/kyc/process",
+                files={"file": ("test.jpg", b"not-a-real-image", "image/jpeg")},
+                data={
+                    "customer_id": "CUST_PROCESS_001",
+                    "document_type": "passport",
+                },
+            )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["customer_id"] == "CUST_PROCESS_001"
+        assert "document_id" in data
+        assert data["document_processed"] is False
+        assert data["processing_time_ms"] >= 0
+        assert isinstance(data["errors"], list)
+        assert len(data["errors"]) > 0
+
+        app.dependency_overrides.clear()
+
