@@ -2,6 +2,8 @@
 
 import uuid
 from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
+from io import BytesIO
 
 import pytest
 import pytest_asyncio
@@ -408,4 +410,54 @@ class TestKYCBatchEndpoint:
 
         assert response.status_code == 422  # Validation error
 
+        app.dependency_overrides.clear()
+
+class TestKYCProcessEndpoint:
+    """Tests for POST /v1/kyc/process."""
+
+    @pytest.mark.asyncio
+    async def test_process_requires_file(self, db_session: AsyncSession):
+        """Rejects request without file upload."""
+        async with create_client_for_user(db_session, USER_A_ID) as client:
+            response = await client.post(
+                "/v1/kyc/process",
+                files={"files": ("test.jpg", b"fakecontent", "image/jpeg")},
+                data={"document_type": "passport"},
+            )
+
+        assert response.status_code == 422
+        app.dependency_overrides.clear()
+    
+    @pytest.mark.asyncio
+    async def test_process_rejects_unsupported_type(self, db_session: AsyncSession):
+        """Rejects unsupported document types."""
+        async with create_client_for_user(db_session, USER_A_ID) as client:
+            response = await client.post(
+                "/v1/kyc/process",
+                files={"file": ("test.jpg", b"fakecontent", "image/jpeg")},
+                data={
+                    "customer_id": "CUST001",
+                    "document_type": "drivers_license",
+                }
+            )
+        
+        assert response.status_code == 400
+        assert "Unsupported document type" in response.json()["detail"]
+        app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_process_rejects_disallowed_extension(self, db_session: AsyncSession):
+        """Rejects files with disallowed extensions."""
+        async with create_client_for_user(db_session, USER_A_ID) as client:
+            response = await client.post(
+                "/v1/kyc/process",
+                files={"file": ("test.exe", b"fakecontent", "application/octet-stream")},
+                data={
+                    "customer_id": "CUST001",
+                    "document_type": "passport",
+                },
+            )
+        
+        assert response.status_code == 400
+        assert "not allowed" in response.json()["detail"]
         app.dependency_overrides.clear()
