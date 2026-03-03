@@ -8,7 +8,7 @@ from typing import Any
 
 import numpy as np
 import cv2
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +18,7 @@ from src.dependencies.auth import get_current_user_id
 from src.middleware.rate_limit import check_rate_limit
 from src.models.document import Document
 from src.schemas.document import DocumentResponse, DocumentUploadResponse
+from src.services.audit import AuditAction, get_client_ip, log_audit_event
 from src.services.ocr import (
     DocumentQualityChecker,
     GoogleVisionOCR,
@@ -377,6 +378,7 @@ def process_business_document(file_path: Path) -> dict[str, Any]:
 
 @router.post("/upload", response_model=DocumentUploadResponse)
 async def upload_document(
+    request: Request,
     file: UploadFile = File(...),
     customer_id: str | None = Form(default=None),
     document_type: str = Form(default="passport"),
@@ -492,6 +494,22 @@ async def upload_document(
     document.processing_error = processing_error
 
     db.add(document)
+
+    await log_audit_event(
+        db,
+        user_id=user_id,
+        action=AuditAction.DOCUMENT_UPLOADED,
+        resource_type="document",
+        resource_id=str(doc_id),
+        details={
+            "document_type": document_type,
+            "status": status,
+            "file_size_bytes": file_size,
+            "customer_id": customer_id,
+        },
+        ip_address=get_client_ip(request),
+    )
+
     await db.commit()
 
     return DocumentUploadResponse(
@@ -505,6 +523,7 @@ async def upload_document(
 
 @router.get("/{document_id}", response_model=DocumentResponse)
 async def get_document(
+    request: Request,
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
@@ -529,5 +548,14 @@ async def get_document(
 
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
+
+    await log_audit_event(
+        db,
+        user_id=user_id,
+        action=AuditAction.DOCUMENT_VIEWED,
+        resource_type="document",
+        resource_id=str(document_id),
+        ip_address=get_client_ip(request),
+    )
 
     return document
