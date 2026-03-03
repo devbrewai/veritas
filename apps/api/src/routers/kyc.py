@@ -339,11 +339,67 @@ async def process_kyc(
     else:
         errors.append("Sanctions screening service not available")
 
-    # TODO: Step 3: Adverse Media Scan
+    # Step 3: Adverse Media Scan
+    adverse_media_schema = None
 
-    # TODO: Step 4: Risk Scoring
+    if adverse_media_service.is_ready and screening_db_id:
+        adverse_result = await adverse_media_service.scan_document(
+            document_id=doc_id,
+            db=db,
+            user_id=user_id,
+        )
+        if adverse_result.success and adverse_result.data:
+            adverse_media_schema = KYCAdverseMediaResult(
+                article_count=adverse_result.data.articles_found,
+                average_sentiment=adverse_result.data.average_sentiment,
+                sentiment_category=(
+                    "Negative" if adverse_result.data.average_sentiment < -0.05
+                    else "Positive" if adverse_result.data.average_sentiment > 0.05
+                    else "Neutral"
+                ) if adverse_result.data.average_sentiment is not None else None,
+            )
+        elif not adverse_result.success:
+            errors.extend(adverse_result.errors or [])
 
-    # TODO:  Determine overall status
+    # Step 4: Risk Scoring
+    risk_schema = None
+
+    if risk_scoring_service.is_ready and screening_db_id:
+        risk_result = await risk_scoring_service.score_screening_result(
+            screening_result_id=screening_db_id,
+            db=db,
+            user_id=user_id,
+        )
+        if risk_result.success and risk_result.data:
+            risk_schema = KYCRiskResult(
+                risk_score=risk_result.data.risk_score,
+                risk_tier=risk_result.data.risk_tier.value,
+                recommendation=risk_result.data.recommendation.value,
+                top_risk_factors=risk_result.data.top_risk_factors,
+            )
+        elif not risk_result.success:
+            errors.extend(risk_result.errors or []) 
+
+    # Determine overall status
+    overall_status = _determine_overall_status(sanctions_result_schema, risk_schema)
+
+    await db.commit()
+
+    processing_time_ms = int((time.time() - pipeline_start) * 1000) 
+
+    return KYCProcessResponse(
+        customer_id=customer_id,
+        document_id=doc_id,
+        document_processed=True,
+        extracted_data=extracted_data,
+        ocr_confidence=ocr_confidence,
+        sanctions_screening=sanctions_result_schema,
+        adverse_media=adverse_media_schema,
+        risk_assessment=risk_schema,
+        overall_status=overall_status,
+        processing_time_ms=processing_time_ms,
+        errors=errors,
+    )
 
 @router.get("/{customer_id}", response_model=KYCResult)
 async def get_kyc_result(
