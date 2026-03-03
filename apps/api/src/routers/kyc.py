@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, date, timedelta
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,6 +34,7 @@ from src.schemas.kyc import (
 )
 
 from src.services.adverse_media import adverse_media_service
+from src.services.audit import AuditAction, get_client_ip, log_audit_event
 from src.services.risk.scorer import risk_scoring_service
 from src.services.sanctions import sanctions_screening_service
 
@@ -194,6 +195,7 @@ async def _get_kyc_result(
 
 @router.post("/process", response_model=KYCProcessResponse)
 async def process_kyc(
+    request: Request,
     file: UploadFile = File(...),
     customer_id: str = Form(...),
     document_type: str = Form(default="passport"),
@@ -291,8 +293,22 @@ async def process_kyc(
 
     #  If OCR failed, return early with partial result
     if not doc_processed:
-        await db.commit()
         processing_time_ms = int((time.time() - pipeline_start) * 1000)
+        await log_audit_event(
+            db,
+            user_id=user_id,
+            action=AuditAction.KYC_PROCESSED,
+            resource_type="kyc",
+            resource_id=str(doc_id),
+            details={
+                "customer_id": customer_id,
+                "overall_status": "pending",
+                "document_processed": False,
+                "processing_time_ms": processing_time_ms,
+            },
+            ip_address=get_client_ip(request),
+        )
+        await db.commit()
         return KYCProcessResponse(
             customer_id=customer_id,
             document_id=doc_id,
@@ -383,9 +399,24 @@ async def process_kyc(
     # Determine overall status
     overall_status = _determine_overall_status(sanctions_result_schema, risk_schema)
 
-    await db.commit()
+    processing_time_ms = int((time.time() - pipeline_start) * 1000)
 
-    processing_time_ms = int((time.time() - pipeline_start) * 1000) 
+    await log_audit_event(
+        db,
+        user_id=user_id,
+        action=AuditAction.KYC_PROCESSED,
+        resource_type="kyc",
+        resource_id=str(doc_id),
+        details={
+            "customer_id": customer_id,
+            "overall_status": overall_status.value,
+            "document_processed": True,
+            "processing_time_ms": processing_time_ms,
+        },
+        ip_address=get_client_ip(request),
+    )
+
+    await db.commit()
 
     return KYCProcessResponse(
         customer_id=customer_id,
@@ -403,6 +434,7 @@ async def process_kyc(
 
 @router.get("/{customer_id}", response_model=KYCResult)
 async def get_kyc_result(
+    http_request: Request,
     customer_id: str,
     db: AsyncSession = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
@@ -414,11 +446,23 @@ async def get_kyc_result(
 
     - **customer_id**: Customer identifier
     """
-    return await _get_kyc_result(customer_id, user_id, db)
+    result = await _get_kyc_result(customer_id, user_id, db)
+
+    await log_audit_event(
+        db,
+        user_id=user_id,
+        action=AuditAction.KYC_VIEWED,
+        resource_type="kyc",
+        resource_id=customer_id,
+        ip_address=get_client_ip(http_request),
+    )
+
+    return result
 
 
 @router.post("/batch", response_model=KYCBatchResponse)
 async def batch_kyc_results(
+    http_request: Request,
     request: KYCBatchRequest,
     db: AsyncSession = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
@@ -445,6 +489,18 @@ async def batch_kyc_results(
     total_review = sum(1 for r in results if r.overall_status == KYCStatus.REVIEW)
     total_rejected = sum(1 for r in results if r.overall_status == KYCStatus.REJECTED)
     total_pending = sum(1 for r in results if r.overall_status == KYCStatus.PENDING)
+
+    await log_audit_event(
+        db,
+        user_id=user_id,
+        action=AuditAction.KYC_BATCH_VIEWED,
+        resource_type="kyc",
+        details={
+            "customer_ids": request.customer_ids,
+            "total_processed": len(results),
+        },
+        ip_address=get_client_ip(http_request),
+    )
 
     return KYCBatchResponse(
         results=results,
