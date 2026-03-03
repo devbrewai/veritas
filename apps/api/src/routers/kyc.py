@@ -219,7 +219,7 @@ async def process_kyc(
     if ext not in settings.ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail=f"File type '{ext}' not allowed. Allowed: {settings. ALLOWED_EXTENSIONS}",
+            detail=f"File type '{ext}' not allowed. Allowed: {settings.ALLOWED_EXTENSIONS}",
         )
     
     content = await file.read()
@@ -319,7 +319,7 @@ async def process_kyc(
                 matched_name=(
                     sanctions_result.data.top_match.matched_name
                     if sanctions_result.data.top_match
-                    else None,
+                    else None
                 ),
                 screened_at=datetime.utcnow(),
             )
@@ -335,7 +335,7 @@ async def process_kyc(
                 screening_db_id = sr.id
                 sanctions_result_schema.screening_id = sr.id
         else:
-            errors.extend(sanctions_result.errors)
+            errors.extend(sanctions_result.errors or [])
     else:
         errors.append("Sanctions screening service not available")
 

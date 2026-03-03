@@ -94,7 +94,7 @@ class KYCBatchResponse(BaseModel):
     total_pending: int = 0
 
 class KYCProcessRequest(BaseModel):
-    """Request for ent-to-end KYC processing."""
+    """Request for end-to-end KYC processing."""
 
     customer_id: str = Field(..., description="Unique customer identifier.")
     document_type: str = Field(
@@ -103,7 +103,7 @@ class KYCProcessRequest(BaseModel):
     )
 
 class KYCProcessResponse(BaseModel):
-    """Response for ent-to-end KYC processing."""
+    """Response for end-to-end KYC processing."""
 
     customer_id: str
     document_id: UUID
