@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
@@ -17,6 +17,7 @@ from src.schemas.sanctions import (
     SanctionsScreenResponse,
     SanctionsServiceStatus,
 )
+from src.services.audit import AuditAction, get_client_ip, log_audit_event
 from src.services.sanctions import sanctions_screening_service
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,9 @@ router = APIRouter(prefix="/screening", tags=["screening"])
 
 @router.post("/sanctions", response_model=SanctionsScreenResponse)
 async def screen_name(
+    http_request: Request,
     request: SanctionsScreenRequest,
+    db: AsyncSession = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ) -> SanctionsScreenResponse:
     """
@@ -53,6 +56,20 @@ async def screen_name(
         top_k=request.top_k,
     )
 
+    decision = result.data.decision.value if result.success and result.data else None
+    await log_audit_event(
+        db,
+        user_id=user_id,
+        action=AuditAction.SANCTIONS_SCREENED,
+        resource_type="screening",
+        details={
+            "name": request.name,
+            "decision": decision,
+            "score": result.confidence,
+        },
+        ip_address=get_client_ip(http_request),
+    )
+
     return SanctionsScreenResponse(
         result=result,
         screened_at=datetime.utcnow(),
@@ -62,7 +79,9 @@ async def screen_name(
 
 @router.post("/sanctions/batch", response_model=SanctionsBatchResponse)
 async def screen_names_batch(
+    http_request: Request,
     request: SanctionsBatchRequest,
+    db: AsyncSession = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ) -> SanctionsBatchResponse:
     """
@@ -101,6 +120,19 @@ async def screen_names_batch(
     )
     total_time = sum(r.processing_time_ms for r in results)
 
+    await log_audit_event(
+        db,
+        user_id=user_id,
+        action=AuditAction.SANCTIONS_BATCH_SCREENED,
+        resource_type="screening",
+        details={
+            "total_screened": len(results),
+            "total_matches": total_matches,
+            "total_reviews": total_reviews,
+        },
+        ip_address=get_client_ip(http_request),
+    )
+
     return SanctionsBatchResponse(
         results=results,
         total_screened=len(results),
@@ -113,6 +145,7 @@ async def screen_names_batch(
 
 @router.post("/document/{document_id}", response_model=SanctionsScreenResponse)
 async def screen_document(
+    http_request: Request,
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
@@ -142,6 +175,20 @@ async def screen_document(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Document not found: {document_id}",
         )
+
+    decision = result.data.decision.value if result.success and result.data else None
+    await log_audit_event(
+        db,
+        user_id=user_id,
+        action=AuditAction.SANCTIONS_DOCUMENT_SCREENED,
+        resource_type="screening",
+        resource_id=str(document_id),
+        details={
+            "decision": decision,
+            "score": result.confidence,
+        },
+        ip_address=get_client_ip(http_request),
+    )
 
     return SanctionsScreenResponse(
         result=result,

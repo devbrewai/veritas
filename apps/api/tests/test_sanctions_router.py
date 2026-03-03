@@ -28,24 +28,6 @@ def initialize_service():
     yield
 
 
-@pytest.fixture
-async def client():
-    """Create async test client with auth dependency override."""
-
-    async def override_get_current_user_id() -> str:
-        return TEST_USER_ID
-
-    app.dependency_overrides[get_current_user_id] = override_get_current_user_id
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test",
-    ) as client:
-        yield client
-
-    app.dependency_overrides.clear()
-
-
 @pytest_asyncio.fixture(scope="function")
 async def db_engine():
     """Create test database engine."""
@@ -71,7 +53,7 @@ async def db_session(db_engine) -> AsyncSession:
 
 
 @pytest_asyncio.fixture
-async def db_client(db_session: AsyncSession):
+async def client(db_session: AsyncSession):
     """Create async test client with database and auth dependency overrides."""
 
     async def override_get_db():
@@ -90,6 +72,10 @@ async def db_client(db_session: AsyncSession):
         yield client
 
     app.dependency_overrides.clear()
+
+
+# Alias for tests that explicitly used db_client
+db_client = client
 
 
 class TestSanctionsHealthEndpoint:
