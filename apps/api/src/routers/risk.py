@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
-from src.dependencies.auth import get_current_user_id
+from src.dependencies.auth import get_authenticated_user
 from src.schemas.adverse_media import (
     AdverseMediaRequest,
     AdverseMediaResponse,
@@ -54,7 +54,7 @@ async def scan_adverse_media(
     http_request: Request,
     request: AdverseMediaRequest,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(get_authenticated_user),
 ) -> AdverseMediaResponse:
     """Scan for adverse media mentions of a name.
 
@@ -112,7 +112,7 @@ async def scan_document_adverse_media(
     http_request: Request,
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(get_authenticated_user),
 ) -> AdverseMediaResponse:
     """Scan for adverse media based on document extracted data.
 
@@ -171,7 +171,7 @@ async def score_risk(
     http_request: Request,
     request: RiskScoringRequest,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(get_authenticated_user),
 ) -> RiskScoringResponse:
     """Score risk from provided features.
 
@@ -248,7 +248,7 @@ async def score_screening_result(
     http_request: Request,
     screening_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(get_authenticated_user),
 ) -> RiskScoringResponse:
     """Score risk for an existing screening result.
 

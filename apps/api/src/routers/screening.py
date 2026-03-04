@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
-from src.dependencies.auth import get_current_user_id
+from src.dependencies.auth import get_authenticated_user
 from src.schemas.sanctions import (
     SanctionsBatchRequest,
     SanctionsBatchResponse,
@@ -30,7 +30,7 @@ async def screen_name(
     http_request: Request,
     request: SanctionsScreenRequest,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(get_authenticated_user),
 ) -> SanctionsScreenResponse:
     """
     Screen a single name against sanctions lists.
@@ -82,7 +82,7 @@ async def screen_names_batch(
     http_request: Request,
     request: SanctionsBatchRequest,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(get_authenticated_user),
 ) -> SanctionsBatchResponse:
     """
     Screen multiple names against sanctions lists in batch.
@@ -148,7 +148,7 @@ async def screen_document(
     http_request: Request,
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(get_authenticated_user),
 ) -> SanctionsScreenResponse:
     """
     Screen names extracted from a processed document.

@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import get_settings
 from src.database import get_db
-from src.dependencies.auth import get_current_user_id
+from src.dependencies.auth import get_authenticated_user
 from src.middleware.rate_limit import check_rate_limit
 from src.models.document import Document
 from src.schemas.document import (
@@ -160,7 +160,7 @@ async def upload_document(
 async def get_document_status(
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(get_authenticated_user),
 ) -> DocumentStatusResponse:
     """Get processing status for a document. Poll until status is completed or failed."""
     result = await db.execute(
@@ -193,7 +193,7 @@ async def get_document(
     request: Request,
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(get_authenticated_user),
 ) -> Document:
     """Retrieve a document by ID.
 

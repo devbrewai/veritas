@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import get_settings
 from src.database import get_db
-from src.dependencies.auth import get_current_user_id
+from src.dependencies.auth import get_authenticated_user
 from src.middleware.rate_limit import check_rate_limit
 from src.models.document import Document
 from src.models.screening_result import ScreeningResult
@@ -457,7 +457,7 @@ async def get_kyc_result(
     http_request: Request,
     customer_id: str,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(get_authenticated_user),
 ) -> KYCResult:
     """Get aggregated KYC results for a customer.
 
@@ -485,7 +485,7 @@ async def batch_kyc_results(
     http_request: Request,
     request: KYCBatchRequest,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(get_authenticated_user),
 ) -> KYCBatchResponse:
     """Get KYC results for multiple customers in batch.
 

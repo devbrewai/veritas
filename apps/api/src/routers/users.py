@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
-from src.dependencies.auth import get_current_user_id
+from src.dependencies.auth import get_authenticated_user
 from src.models.audit_log import AuditLog
 from src.models.document import Document
 from src.models.screening_result import ScreeningResult
@@ -34,7 +34,7 @@ router = APIRouter(prefix="/users", tags=["users"])
 @router.get("/me/stats", response_model=UserStats)
 async def get_user_stats(
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(get_authenticated_user),
 ) -> UserStats:
     """Get statistics for the current user.
 
@@ -198,7 +198,7 @@ async def _get_user_export_data(user_id: str, db: AsyncSession) -> UserDataExpor
 async def get_user_export(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(get_authenticated_user),
 ) -> Response:
     """Export all user data as JSON (GDPR data export)."""
     export_data = await _get_user_export_data(user_id, db)
@@ -229,7 +229,7 @@ async def get_user_export(
 async def delete_me(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(get_authenticated_user),
 ) -> None:
     """Delete all user data (right to be forgotten). Returns 204 No Content."""
     await log_audit_event(
