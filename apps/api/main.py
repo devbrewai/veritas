@@ -18,6 +18,7 @@ from src.schemas.errors import ErrorCode, ErrorDetail, ErrorResponse
 from src.database import engine
 from src.models import Base
 from src.routers import (
+    api_keys_router,
     documents_router,
     health_router,
     kyc_router,
@@ -149,6 +150,7 @@ def _http_status_to_code(status_code: int) -> str:
 
 # Include routers
 app.include_router(health_router)
+app.include_router(api_keys_router, prefix=settings.API_V1_PREFIX)
 app.include_router(documents_router, prefix=settings.API_V1_PREFIX)
 app.include_router(kyc_router, prefix=settings.API_V1_PREFIX)
 app.include_router(screening_router, prefix=settings.API_V1_PREFIX)
