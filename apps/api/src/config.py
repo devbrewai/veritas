@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE_MB: int = 10
     ALLOWED_EXTENSIONS: list[str] = ["jpg", "jpeg", "png", "pdf", "heic", "heif"]
 
+    # GDPR retention (configurable per engagement)
+    DOCUMENT_RETENTION_DAYS: int = 30
+
     # OCR - Tesseract
     TESSERACT_CMD: str | None = None  # Use system default if None
 

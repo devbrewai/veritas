@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, Float, Integer, JSON, String, Text, Uuid, func
+from sqlalchemy import Boolean, Date, DateTime, Float, Integer, JSON, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.models.base import Base
@@ -40,6 +40,13 @@ class Document(Base):
     uploaded_at: Mapped[datetime] = mapped_column(
         server_default=func.now(),
         nullable=False,
+    )
+
+    # GDPR retention: documents are deleted after this time (cleanup script)
+    expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=False),
+        nullable=True,
+        index=True,
     )
 
     file_path: Mapped[str] = mapped_column(
