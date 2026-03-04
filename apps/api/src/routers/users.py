@@ -3,15 +3,24 @@
 import logging
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
 from src.dependencies.auth import get_current_user_id
+from src.models.audit_log import AuditLog
 from src.models.document import Document
 from src.models.screening_result import ScreeningResult
-from src.schemas.user import UserStats
+from src.schemas.user import (
+    AuditLogExportItem,
+    DocumentExportItem,
+    ScreeningExportItem,
+    UserDataExport,
+    UserStats,
+)
+from src.services.audit import AuditAction, get_client_ip, log_audit_event
 
 logger = logging.getLogger(__name__)
 
@@ -114,4 +123,90 @@ async def get_user_stats(
         screenings_this_month=screenings_this_month,
         average_risk_score=average_risk_score,
         risk_tier_distribution=risk_tier_distribution,
+    )
+
+
+async def _get_user_export_data(user_id: str, db: AsyncSession) -> UserDataExport:
+    """Build full user data export (documents, screenings, audit_logs)."""
+    docs_result = await db.execute(
+        select(Document).where(Document.user_id == user_id).order_by(Document.uploaded_at)
+    )
+    docs = docs_result.scalars().all()
+    screenings_result = await db.execute(
+        select(ScreeningResult)
+        .where(ScreeningResult.user_id == user_id)
+        .order_by(ScreeningResult.screened_at)
+    )
+    screenings = screenings_result.scalars().all()
+    audit_result = await db.execute(
+        select(AuditLog).where(AuditLog.user_id == user_id).order_by(AuditLog.created_at)
+    )
+    audit_logs = audit_result.scalars().all()
+    def doc_to_export(d: Document) -> DocumentExportItem:
+        return DocumentExportItem(
+            id=d.id,
+            customer_id=d.customer_id,
+            document_type=d.document_type,
+            uploaded_at=d.uploaded_at,
+            expires_at=d.expires_at,
+            file_size_bytes=d.file_size_bytes,
+            processed=d.processed,
+            ocr_confidence=d.ocr_confidence,
+            issue_date=d.issue_date,
+        )
+
+    def screening_to_export(s: ScreeningResult) -> ScreeningExportItem:
+        return ScreeningExportItem(
+            id=s.id,
+            document_id=s.document_id,
+            customer_id=s.customer_id,
+            full_name=s.full_name,
+            sanctions_decision=s.sanctions_decision,
+            sanctions_score=s.sanctions_score,
+            risk_score=s.risk_score,
+            risk_tier=s.risk_tier,
+            recommendation=s.recommendation,
+            screened_at=s.screened_at,
+        )
+
+    def audit_to_export(a: AuditLog) -> AuditLogExportItem:
+        return AuditLogExportItem(
+            id=a.id,
+            action=a.action,
+            resource_type=a.resource_type,
+            resource_id=a.resource_id,
+            details=a.details,
+            created_at=a.created_at,
+        )
+
+    return UserDataExport(
+        documents=[doc_to_export(d) for d in docs],
+        screening_results=[screening_to_export(s) for s in screenings],
+        audit_logs=[audit_to_export(a) for a in audit_logs],
+    )
+
+
+@router.get("/me/export")
+async def get_user_export(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+) -> Response:
+    """Export all user data as JSON (GDPR data export)."""
+    export_data = await _get_user_export_data(user_id, db)
+    await log_audit_event(
+        db,
+        user_id=user_id,
+        action=AuditAction.DATA_EXPORT_REQUESTED,
+        resource_type="user",
+        resource_id=user_id,
+        details={"exported_at": export_data.exported_at},
+        ip_address=get_client_ip(request),
+    )
+    await db.commit()
+    filename = f"veritas-export-{user_id[:16]}-{datetime.utcnow().strftime('%Y%m%d')}.json"
+    return Response(
+        content=export_data.model_dump_json(),
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

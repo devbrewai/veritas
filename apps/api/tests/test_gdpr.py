@@ -1,4 +1,4 @@
-"""Tests for GDPR retention: file deletion and cleanup."""
+"""Tests for GDPR retention, data export, and right-to-be-forgotten."""
 
 import uuid
 from datetime import datetime, timedelta
@@ -6,10 +6,15 @@ from pathlib import Path
 
 import pytest
 import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from main import app
+from src.database import get_db
+from src.dependencies.auth import get_current_user_id
 from src.models import Base
+from src.models.audit_log import AuditLog
 from src.models.document import Document
 from src.models.screening_result import ScreeningResult
 from src.services.retention import (
@@ -18,6 +23,7 @@ from src.services.retention import (
 )
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+EXPORT_USER_ID = "export-test-user"
 
 
 class TestDeleteDocumentFiles:
@@ -155,4 +161,105 @@ class TestRunRetentionCleanup:
         assert deleted == 0
         assert file_path.exists()
         result = await db_session.execute(select(Document).where(Document.id == doc_id))
+        assert result.scalar_one_or_none() is not None
+
+
+# ---------------------------------------------------------------------------
+# Data export (GET /v1/users/me/export)
+# ---------------------------------------------------------------------------
+
+
+class TestDataExport:
+    """Tests for GET /v1/users/me/export."""
+
+    @pytest_asyncio.fixture
+    async def db_engine(self):
+        engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        yield engine
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+        await engine.dispose()
+
+    @pytest_asyncio.fixture
+    async def db_session(self, db_engine) -> AsyncSession:
+        async_session_maker = async_sessionmaker(
+            db_engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+        )
+        async with async_session_maker() as session:
+            yield session
+
+    @pytest.mark.asyncio
+    async def test_export_returns_documents_screenings_audit_logs(
+        self, db_session: AsyncSession
+    ) -> None:
+        """Export includes documents, screening_results, audit_logs and logs the request."""
+        doc = Document(
+            id=uuid.uuid4(),
+            user_id=EXPORT_USER_ID,
+            customer_id="c1",
+            document_type="passport",
+            file_path="/tmp/x.jpg",
+            file_size_bytes=100,
+            processed=True,
+            expires_at=datetime.utcnow() + timedelta(days=30),
+        )
+        db_session.add(doc)
+        await db_session.flush()
+        screening = ScreeningResult(
+            id=uuid.uuid4(),
+            user_id=EXPORT_USER_ID,
+            document_id=doc.id,
+            full_name="Test User",
+            sanctions_match=False,
+            sanctions_decision="no_match",
+        )
+        db_session.add(screening)
+        audit = AuditLog(
+            id=uuid.uuid4(),
+            user_id=EXPORT_USER_ID,
+            action="document_uploaded",
+            resource_type="document",
+            resource_id=str(doc.id),
+        )
+        db_session.add(audit)
+        await db_session.commit()
+
+        async def override_get_db():
+            yield db_session
+
+        async def override_get_current_user_id() -> str:
+            return EXPORT_USER_ID
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_current_user_id] = override_get_current_user_id
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+        ) as client:
+            response = await client.get("/v1/users/me/export")
+
+        app.dependency_overrides.clear()
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "documents" in data
+        assert "screening_results" in data
+        assert "audit_logs" in data
+        assert "exported_at" in data
+        assert len(data["documents"]) == 1
+        assert len(data["screening_results"]) == 1
+        assert len(data["audit_logs"]) >= 1  # pre-existing + data_export_requested
+
+        # Export request must be audited
+        result = await db_session.execute(
+            select(AuditLog).where(
+                AuditLog.user_id == EXPORT_USER_ID,
+                AuditLog.action == "data_export_requested",
+            )
+        )
         assert result.scalar_one_or_none() is not None
