@@ -6,9 +6,11 @@ from unittest.mock import AsyncMock, patch
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from fastapi import Request
+
 from main import app
 from src.database import get_db
-from src.dependencies.auth import get_current_user_id
+from src.dependencies.auth import get_authenticated_user
 from src.middleware.rate_limit import check_rate_limit
 from src.models import Base
 
@@ -40,14 +42,17 @@ def _client_with_overrides(db_session: AsyncSession):
     async def override_get_db():
         yield db_session
 
-    async def override_get_current_user_id() -> str:
+    async def override_get_authenticated_user(request: Request) -> str:
+        request.state.user_id = TEST_USER_ID
+        request.state.rate_limit = 60
+        request.state.auth_key_id = "session"
         return TEST_USER_ID
 
     async def override_check_rate_limit() -> str:
         return TEST_USER_ID
 
     app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[get_current_user_id] = override_get_current_user_id
+    app.dependency_overrides[get_authenticated_user] = override_get_authenticated_user
     app.dependency_overrides[check_rate_limit] = override_check_rate_limit
 
     return AsyncClient(

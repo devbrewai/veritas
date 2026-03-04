@@ -6,13 +6,14 @@ from pathlib import Path
 
 import pytest
 import pytest_asyncio
+from fastapi import Request
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from main import app
 from src.database import get_db
-from src.dependencies.auth import get_current_user_id
+from src.dependencies.auth import get_authenticated_user
 from src.models import Base
 from src.models.audit_log import AuditLog
 from src.models.document import Document
@@ -231,11 +232,14 @@ class TestDataExport:
         async def override_get_db():
             yield db_session
 
-        async def override_get_current_user_id() -> str:
+        async def override_get_authenticated_user(request: Request) -> str:
+            request.state.user_id = EXPORT_USER_ID
+            request.state.rate_limit = 60
+            request.state.auth_key_id = "session"
             return EXPORT_USER_ID
 
         app.dependency_overrides[get_db] = override_get_db
-        app.dependency_overrides[get_current_user_id] = override_get_current_user_id
+        app.dependency_overrides[get_authenticated_user] = override_get_authenticated_user
 
         async with AsyncClient(
             transport=ASGITransport(app=app),
@@ -347,11 +351,14 @@ class TestDeleteMe:
             async def override_get_db():
                 yield db_session
 
-            async def override_get_current_user_id() -> str:
+            async def override_get_authenticated_user(request: Request) -> str:
+                request.state.user_id = delete_user_id
+                request.state.rate_limit = 60
+                request.state.auth_key_id = "session"
                 return delete_user_id
 
             app.dependency_overrides[get_db] = override_get_db
-            app.dependency_overrides[get_current_user_id] = override_get_current_user_id
+            app.dependency_overrides[get_authenticated_user] = override_get_authenticated_user
 
             async with AsyncClient(
                 transport=ASGITransport(app=app),

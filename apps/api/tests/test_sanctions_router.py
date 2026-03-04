@@ -4,12 +4,13 @@ API tests for sanctions screening endpoints.
 
 import pytest
 import pytest_asyncio
+from fastapi import Request
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from main import app
 from src.database import get_db
-from src.dependencies.auth import get_current_user_id
+from src.dependencies.auth import get_authenticated_user
 from src.models import Base
 from src.services.sanctions import sanctions_screening_service
 
@@ -59,11 +60,14 @@ async def client(db_session: AsyncSession):
     async def override_get_db():
         yield db_session
 
-    async def override_get_current_user_id() -> str:
+    async def override_get_authenticated_user(request: Request) -> str:
+        request.state.user_id = TEST_USER_ID
+        request.state.rate_limit = 60
+        request.state.auth_key_id = "session"
         return TEST_USER_ID
 
     app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[get_current_user_id] = override_get_current_user_id
+    app.dependency_overrides[get_authenticated_user] = override_get_authenticated_user
 
     async with AsyncClient(
         transport=ASGITransport(app=app),

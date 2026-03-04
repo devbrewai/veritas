@@ -6,11 +6,12 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
+from fastapi import Request
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.database import get_db
-from src.dependencies.auth import get_current_user_id
+from src.dependencies.auth import get_authenticated_user, get_current_user_id
 from src.models import Base
 
 # Use SQLite for testing (in-memory)
@@ -64,8 +65,15 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     async def override_get_current_user_id() -> str:
         return TEST_USER_ID
 
+    async def override_get_authenticated_user(request: Request) -> str:
+        request.state.user_id = TEST_USER_ID
+        request.state.rate_limit = 60
+        request.state.auth_key_id = "session"
+        return TEST_USER_ID
+
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user_id] = override_get_current_user_id
+    app.dependency_overrides[get_authenticated_user] = override_get_authenticated_user
 
     async with AsyncClient(
         transport=ASGITransport(app=app),
