@@ -89,6 +89,14 @@ JWT tokens are validated using JWKS fetched from the Better Auth server at `{BET
 | `POST` | `/v1/risk/score/screening/{id}` | Score risk for screening result |
 | `GET` | `/v1/risk/health` | Risk service status |
 
+### Users & GDPR (Protected 🔒)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/v1/users/me/stats` | User statistics (documents, screenings, risk averages) |
+| `GET` | `/v1/users/me/export` | Export all user data as JSON (GDPR data export) |
+| `DELETE` | `/v1/users/me` | Delete all user data and files (right to be forgotten) |
+
 ## Multi-Tenancy
 
 All user data is isolated by `user_id`. When authenticated, users can only access their own:
@@ -107,6 +115,7 @@ The `user_id` is extracted from the JWT token's `sub` claim.
 - **Adverse Media**: GDELT news search with VADER sentiment analysis
 - **Risk Scoring**: LightGBM classifier with SHAP explanations
 - **Audit Logging**: Immutable audit log for compliance (screening, risk, document actions)
+- **GDPR**: Document retention (`expires_at` + cleanup script), data export (`GET /v1/users/me/export`), right to be forgotten (`DELETE /v1/users/me`)
 - **Multi-Tenant Isolation**: All data filtered by authenticated user
 
 ## Testing

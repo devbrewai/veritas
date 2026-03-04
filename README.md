@@ -78,6 +78,7 @@ veritas/
 - **Adverse Media**: GDELT news search with VADER sentiment analysis
 - **Risk Scoring**: LightGBM classifier with SHAP explanations
 - **Audit Logging**: Immutable audit log for screening, risk, and document actions (compliance)
+- **GDPR**: Document retention, data export (`GET /v1/users/me/export`), right to be forgotten (`DELETE /v1/users/me`)
 - **Multi-Tenant**: Complete data isolation by user
 
 ## Tech Stack
@@ -126,6 +127,7 @@ make test           # Run all tests
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/veritas
 BETTER_AUTH_URL=http://localhost:3000
 UPLOAD_DIR=./uploads
+DOCUMENT_RETENTION_DAYS=30   # optional, default 30
 DEBUG=true
 ```
 
