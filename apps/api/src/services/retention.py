@@ -82,3 +82,30 @@ async def run_retention_cleanup(db: AsyncSession, upload_dir: Path | str) -> int
         await db.delete(doc)
     await db.flush()
     return len(expired)
+
+
+async def delete_all_user_data(
+    db: AsyncSession,
+    user_id: str,
+    upload_dir: Path | str,
+) -> None:
+    """Delete all data for a user (right to be forgotten).
+
+    Caller must log ACCOUNT_DELETED audit event before calling.
+    Order: delete screening_results for user_id, then each document's files and row.
+    """
+    upload_resolved = Path(upload_dir).resolve()
+    await db.execute(delete(ScreeningResult).where(ScreeningResult.user_id == user_id))
+    await db.flush()
+    result = await db.execute(select(Document).where(Document.user_id == user_id))
+    documents = result.scalars().all()
+    for doc in documents:
+        try:
+            delete_document_files(doc.file_path, upload_resolved)
+        except ValueError:
+            logger.warning(
+                "Skipping file deletion for doc %s (path outside upload_dir)",
+                doc.id,
+            )
+        await db.delete(doc)
+    await db.flush()

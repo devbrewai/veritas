@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
+
+from src.config import get_settings
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,8 +23,10 @@ from src.schemas.user import (
     UserStats,
 )
 from src.services.audit import AuditAction, get_client_ip, log_audit_event
+from src.services.retention import delete_all_user_data
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -210,3 +214,24 @@ async def get_user_export(
         media_type="application/json",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.delete("/me", status_code=204)
+async def delete_me(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+) -> None:
+    """Delete all user data (right to be forgotten). Returns 204 No Content."""
+    await log_audit_event(
+        db,
+        user_id=user_id,
+        action=AuditAction.ACCOUNT_DELETED,
+        resource_type="user",
+        resource_id=user_id,
+        details={"requested_at": datetime.utcnow().isoformat()},
+        ip_address=get_client_ip(request),
+    )
+    await db.flush()
+    await delete_all_user_data(db, user_id, settings.UPLOAD_DIR)
+    await db.commit()
