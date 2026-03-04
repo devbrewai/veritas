@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -19,7 +20,8 @@ from veritas_sdk.models import (
     upload_result_from_dict,
 )
 
-DEFAULT_BASE_URL = "https://veritas-api.onrender.com/v1"
+# Production default; override with VERITAS_API_URL (e.g. http://localhost:8000/v1) for local/staging
+DEFAULT_BASE_URL = os.environ.get("VERITAS_API_URL", "https://veritas-api.onrender.com/v1")
 
 
 class DocumentsAPI:
@@ -140,18 +142,19 @@ class VeritasClient:
 
     Args:
         api_key: Your Veritas API key (starts with vrt_sk_).
-        base_url: API base URL including /v1 (default: production).
+        base_url: API base URL including /v1. Defaults to VERITAS_API_URL env var,
+            or https://veritas-api.onrender.com/v1 if unset.
         timeout: Request timeout in seconds (default: 30).
     """
 
     def __init__(
         self,
         api_key: str,
-        base_url: str = DEFAULT_BASE_URL,
+        base_url: str | None = None,
         timeout: int = 30,
     ) -> None:
         self._api_key = api_key
-        self._base_url = base_url.rstrip("/")
+        self._base_url = (base_url or DEFAULT_BASE_URL).rstrip("/")
         self._timeout = timeout
         self.documents = DocumentsAPI(self)
         self.kyc = KYCAPI(self)

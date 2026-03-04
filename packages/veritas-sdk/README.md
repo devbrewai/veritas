@@ -16,6 +16,13 @@ Or from this directory:
 uv sync
 ```
 
+## Configuration
+
+- **`VERITAS_API_URL`** — Base URL for the API (e.g. `https://veritas-api.onrender.com/v1`). If set, the client uses it when no `base_url` is passed to `VeritasClient`. Use `http://localhost:8000/v1` for local development.
+- You can still pass `base_url` explicitly to `VeritasClient(api_key="...", base_url="...")` to override the env var.
+
+The SDK does not load a `.env` file; it only reads `os.environ`. To use env vars, either set them in your shell or load `.env` in your application (e.g. with `python-dotenv`). See [.env.example](.env.example) in this package for the optional variables.
+
 ## Quick start
 
 ### Option A — Sync (one call, result in under 15s)
