@@ -155,3 +155,15 @@ async def test_status_404_nonexistent(db_session: AsyncSession):
         response = await client.get(f"/v1/documents/{uuid.uuid4()}/status")
     app.dependency_overrides.clear()
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_get_document_includes_status(db_session: AsyncSession, doc_completed: Document):
+    """GET /v1/documents/{id} response includes computed status field."""
+    async with _client_for_user(db_session, USER_A) as client:
+        response = await client.get(f"/v1/documents/{doc_completed.id}")
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    data = response.json()
+    assert "status" in data
+    assert data["status"] == "completed"

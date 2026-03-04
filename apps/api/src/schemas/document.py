@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # Single source of truth for document processing status (DRY)
 DocumentProcessingStatus = Literal["processing", "completed", "failed"]
@@ -50,5 +50,11 @@ class DocumentResponse(BaseModel):
     ocr_confidence: float | None
     extracted_data: dict[str, Any] | None
     processing_error: str | None
+    status: DocumentProcessingStatus = "processing"
 
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="after")
+    def set_status_from_processed(self) -> "DocumentResponse":
+        self.status = get_document_processing_status(self.processed, self.processing_error)
+        return self
