@@ -61,8 +61,11 @@ JWT tokens are validated using JWKS fetched from the Better Auth server at `{BET
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/v1/documents/upload` | Upload and process document (passport, utility_bill, business_reg; JPG, PNG, PDF, HEIC) |
-| `GET` | `/v1/documents/{id}` | Get document by ID |
+| `POST` | `/v1/documents/upload` | Upload document (returns **202 Accepted**; OCR runs in background) |
+| `GET` | `/v1/documents/{id}/status` | Poll processing status until `completed` or `failed` |
+| `GET` | `/v1/documents/{id}` | Get document by ID (includes `status` field) |
+
+**Async upload flow:** Upload returns 202 with `document_id`, `status_url`, and `estimated_completion_seconds`. Poll `GET /v1/documents/{id}/status` (or `GET /v1/documents/{id}`) until `status` is `completed` or `failed`. Rate limit and concurrency are configurable via `RATE_LIMIT_UPLOADS_PER_MINUTE` (default 60) and `WEB_CONCURRENCY` (default 4 in Docker).
 
 ### KYC (Protected 🔒)
 
@@ -111,7 +114,7 @@ The `user_id` is extracted from the JWT token's `sub` claim.
 
 ## Features
 
-- **Document Processing**: OCR from passports (MRZ), utility bills, business docs; PDF and HEIC/HEIF support; quality checks for poor scans
+- **Document Processing**: Async upload (202), background OCR for passports (MRZ), utility bills, business docs; PDF and HEIC/HEIF support; quality checks; poll `GET /v1/documents/{id}/status` for completion
 - **End-to-End KYC**: Single endpoint chains OCR → sanctions → adverse media → risk scoring
 - **Sanctions Screening**: OFAC + UN consolidated list with fuzzy matching
 - **Adverse Media**: GDELT news search with VADER sentiment analysis
