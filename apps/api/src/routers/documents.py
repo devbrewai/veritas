@@ -13,7 +13,12 @@ from src.database import get_db
 from src.dependencies.auth import get_current_user_id
 from src.middleware.rate_limit import check_rate_limit
 from src.models.document import Document
-from src.schemas.document import DocumentResponse, DocumentUploadResponse
+from src.schemas.document import (
+    DocumentResponse,
+    DocumentStatusResponse,
+    DocumentUploadResponse,
+    get_document_processing_status,
+)
 from src.services.audit import AuditAction, get_client_ip, log_audit_event
 from src.services.document_processor import run_document_processing_async
 from src.services.retention import compute_expires_at
@@ -109,6 +114,36 @@ async def upload_document(
         document_id=doc_id,
         status="processing",
         message="Document accepted for processing. Poll GET /v1/documents/{id}/status for completion.",
+    )
+
+
+@router.get("/{document_id}/status", response_model=DocumentStatusResponse)
+async def get_document_status(
+    document_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+) -> DocumentStatusResponse:
+    """Get processing status for a document. Poll until status is completed or failed."""
+    result = await db.execute(
+        select(Document).where(
+            Document.id == document_id,
+            Document.user_id == user_id,
+        )
+    )
+    document = result.scalar_one_or_none()
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    status_value = get_document_processing_status(
+        document.processed,
+        document.processing_error,
+    )
+    message = None
+    if status_value == "failed" and document.processing_error:
+        message = document.processing_error
+    return DocumentStatusResponse(
+        document_id=document_id,
+        status=status_value,
+        message=message,
     )
 
 

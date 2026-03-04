@@ -6,6 +6,29 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+# Single source of truth for document processing status (DRY)
+DocumentProcessingStatus = Literal["processing", "completed", "failed"]
+
+
+def get_document_processing_status(
+    processed: bool,
+    processing_error: str | None,
+) -> DocumentProcessingStatus:
+    """Derive status from document fields. Use for GET status and GET document."""
+    if processed:
+        return "completed"
+    if processing_error:
+        return "failed"
+    return "processing"
+
+
+class DocumentStatusResponse(BaseModel):
+    """Response for GET /v1/documents/{id}/status."""
+
+    document_id: UUID
+    status: DocumentProcessingStatus
+    message: str | None = None
+
 
 class DocumentUploadResponse(BaseModel):
     """Response after document upload."""
