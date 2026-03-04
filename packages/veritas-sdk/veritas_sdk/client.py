@@ -97,6 +97,44 @@ class KYCAPI:
         return kyc_batch_result_from_dict(response)
 
 
+class WebhooksAPI:
+    """Webhook registration: create, list, delete."""
+
+    def __init__(self, client: VeritasClient) -> None:
+        self._client = client
+
+    def create(self, url: str, events: list[str]) -> dict[str, Any]:
+        """Register a webhook endpoint. Returns id, url, events, secret (only once), created_at."""
+        return self._client._request(
+            "POST",
+            "/webhooks",
+            json={"url": url, "events": events},
+        )
+
+    def list(self) -> dict[str, Any]:
+        """List registered webhooks. Returns { \"webhooks\": [...] }; secrets are not included."""
+        return self._client._request("GET", "/webhooks")
+
+    def delete(self, webhook_id: str) -> None:
+        """Delete a webhook by ID (204 No Content)."""
+        self._client._request("DELETE", f"/webhooks/{webhook_id}")
+
+
+class UsersAPI:
+    """GDPR: data export and account deletion."""
+
+    def __init__(self, client: VeritasClient) -> None:
+        self._client = client
+
+    def export(self) -> dict[str, Any]:
+        """Export all user data (documents metadata, KYC results) for GDPR data portability."""
+        return self._client._request("GET", "/users/me/export")
+
+    def delete_me(self) -> dict[str, Any]:
+        """Right to be forgotten: delete account and associated data. Irreversible."""
+        return self._client._request("DELETE", "/users/me")
+
+
 class VeritasClient:
     """Veritas KYC/AML API client.
 
@@ -117,6 +155,8 @@ class VeritasClient:
         self._timeout = timeout
         self.documents = DocumentsAPI(self)
         self.kyc = KYCAPI(self)
+        self.webhooks = WebhooksAPI(self)
+        self.users = UsersAPI(self)
 
     def _request(
         self,
