@@ -21,7 +21,7 @@ Veritas automates customer onboarding verification for cross-border payments com
 │  ┌──────────────────────────────────────────────────────────────────┐  │
 │  │                        PostgreSQL                                 │  │
 │  │  • Better Auth tables (user, session, jwks)                      │  │
-│  │  • Application tables (documents, screening_results)              │  │
+│  │  • Application tables (documents, screening_results, audit_logs) │  │
 │  └──────────────────────────────────────────────────────────────────┘  │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -72,10 +72,12 @@ veritas/
 
 ## Features
 
-- **Document Processing**: OCR extraction from passports (MRZ) and utility bills
+- **Document Processing**: OCR extraction from passports (MRZ), utility bills, and business docs; PDF and HEIC/HEIF support; quality checks with re-upload guidance for poor scans
+- **End-to-End KYC**: Single `POST /v1/kyc/process` chains OCR → sanctions → adverse media → risk scoring
 - **Sanctions Screening**: OFAC + UN consolidated list with fuzzy matching
 - **Adverse Media**: GDELT news search with VADER sentiment analysis
 - **Risk Scoring**: LightGBM classifier with SHAP explanations
+- **Audit Logging**: Immutable audit log for screening, risk, and document actions (compliance)
 - **Multi-Tenant**: Complete data isolation by user
 
 ## Tech Stack
@@ -145,7 +147,7 @@ When the API is running, visit:
 ## Testing
 
 ```bash
-# Run all API tests (326 tests)
+# Run all API tests
 make api-test
 
 # Run specific test file

@@ -100,7 +100,7 @@ const response = await fetch('http://localhost:8000/v1/documents/upload', {
 
 ## Tech Stack
 
-- **Framework**: Next.js 15 with App Router
+- **Framework**: Next.js 16 with App Router
 - **Auth**: Better Auth with JWT plugin
 - **Database**: PostgreSQL (via pg driver)
 - **Styling**: Tailwind CSS

@@ -58,27 +58,35 @@ JWT tokens are validated using JWKS fetched from the Better Auth server at `{BET
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/v1/documents/upload` | Upload and process document (passport, utility bill) |
+| `POST` | `/v1/documents/upload` | Upload and process document (passport, utility_bill, business_reg; JPG, PNG, PDF, HEIC) |
 | `GET` | `/v1/documents/{id}` | Get document by ID |
 
-### Sanctions Screening
+### KYC (Protected 🔒)
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| `POST` | `/v1/screening/sanctions` | Screen a name against OFAC/UN sanctions | Public |
-| `POST` | `/v1/screening/sanctions/batch` | Batch screen up to 100 names | Public |
-| `POST` | `/v1/screening/document/{id}` | Screen names from a processed document | 🔒 |
-| `GET` | `/v1/screening/sanctions/health` | Sanctions service status | Public |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/v1/kyc/process` | End-to-end KYC: upload + OCR + sanctions + adverse media + risk |
+| `GET` | `/v1/kyc/{customer_id}` | Get aggregated KYC result for a customer |
+| `POST` | `/v1/kyc/batch` | Get KYC results for multiple customers (max 10) |
 
-### Adverse Media & Risk Scoring
+### Sanctions Screening (Protected 🔒)
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| `POST` | `/v1/risk/adverse-media` | Scan name for adverse media (GDELT + VADER) | Public |
-| `POST` | `/v1/risk/adverse-media/document/{id}` | Scan document for adverse media | 🔒 |
-| `POST` | `/v1/risk/score` | Score risk from features (LightGBM + SHAP) | Public |
-| `POST` | `/v1/risk/score/screening/{id}` | Score risk for screening result | 🔒 |
-| `GET` | `/v1/risk/health` | Risk service status | Public |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/v1/screening/sanctions` | Screen a name against OFAC/UN sanctions |
+| `POST` | `/v1/screening/sanctions/batch` | Batch screen up to 100 names |
+| `POST` | `/v1/screening/document/{id}` | Screen names from a processed document |
+| `GET` | `/v1/screening/sanctions/health` | Sanctions service status |
+
+### Adverse Media & Risk Scoring (Protected 🔒)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/v1/risk/adverse-media` | Scan name for adverse media (GDELT + VADER) |
+| `POST` | `/v1/risk/adverse-media/document/{id}` | Scan document for adverse media |
+| `POST` | `/v1/risk/score` | Score risk from features (LightGBM + SHAP) |
+| `POST` | `/v1/risk/score/screening/{id}` | Score risk for screening result |
+| `GET` | `/v1/risk/health` | Risk service status |
 
 ## Multi-Tenancy
 
@@ -86,21 +94,24 @@ All user data is isolated by `user_id`. When authenticated, users can only acces
 - Documents
 - Screening results
 - Risk assessments
+- Audit logs
 
 The `user_id` is extracted from the JWT token's `sub` claim.
 
 ## Features
 
-- **Document Processing**: OCR extraction from passports (MRZ) and utility bills
+- **Document Processing**: OCR from passports (MRZ), utility bills, business docs; PDF and HEIC/HEIF support; quality checks for poor scans
+- **End-to-End KYC**: Single endpoint chains OCR → sanctions → adverse media → risk scoring
 - **Sanctions Screening**: OFAC + UN consolidated list with fuzzy matching
 - **Adverse Media**: GDELT news search with VADER sentiment analysis
 - **Risk Scoring**: LightGBM classifier with SHAP explanations
+- **Audit Logging**: Immutable audit log for compliance (screening, risk, document actions)
 - **Multi-Tenant Isolation**: All data filtered by authenticated user
 
 ## Testing
 
 ```bash
-# Run all tests (326 tests)
+# Run all tests
 uv run pytest
 
 # Run specific test

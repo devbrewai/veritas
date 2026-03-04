@@ -1,1 +1,2 @@
 Generic single-database configuration with an async dbapi.
+Migrations manage application tables: documents, screening_results, audit_logs.
