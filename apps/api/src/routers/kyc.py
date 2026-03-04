@@ -194,7 +194,16 @@ async def _get_kyc_result(
         updated_at=updated_at,
     )
 
-@router.post("/process", response_model=KYCProcessResponse)
+@router.post(
+    "/process",
+    response_model=KYCProcessResponse,
+    summary="Process KYC (sync)",
+    description=(
+        "Single-call end-to-end KYC: upload a document and receive the full result "
+        "(OCR extraction, sanctions screening, adverse media, risk assessment) in one response. "
+        "Completes in under 15 seconds. Use when you need an immediate result without polling."
+    ),
+)
 async def process_kyc(
     request: Request,
     file: UploadFile = File(...),
@@ -434,7 +443,16 @@ async def process_kyc(
         errors=errors,
     )
 
-@router.get("/{customer_id}", response_model=KYCResult)
+@router.get(
+    "/{customer_id}",
+    response_model=KYCResult,
+    summary="Get KYC results",
+    description=(
+        "Retrieve complete KYC results for a customer including document extraction, "
+        "sanctions screening, adverse media, and risk assessment. "
+        "Use after async upload when document status is completed, or to fetch results from POST /v1/kyc/process."
+    ),
+)
 async def get_kyc_result(
     http_request: Request,
     customer_id: str,

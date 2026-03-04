@@ -190,7 +190,11 @@ async def _get_user_export_data(user_id: str, db: AsyncSession) -> UserDataExpor
     )
 
 
-@router.get("/me/export")
+@router.get(
+    "/me/export",
+    summary="Export user data (GDPR)",
+    description="Export all user data (documents metadata, KYC results, audit) for GDPR data portability. Returns JSON download.",
+)
 async def get_user_export(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -216,7 +220,12 @@ async def get_user_export(
     )
 
 
-@router.delete("/me", status_code=204)
+@router.delete(
+    "/me",
+    status_code=204,
+    summary="Delete account (right to be forgotten)",
+    description="Delete account and all associated data. Irreversible.",
+)
 async def delete_me(
     request: Request,
     db: AsyncSession = Depends(get_db),

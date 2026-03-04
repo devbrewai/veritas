@@ -29,7 +29,18 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 settings = get_settings()
 
 
-@router.post("/upload", response_model=DocumentUploadResponse, status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/upload",
+    response_model=DocumentUploadResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Upload a KYC document",
+    description=(
+        "Upload a passport, utility bill, or business registration document. "
+        "Returns 202 with document_id and status_url. Poll GET /v1/documents/{document_id}/status "
+        "until completed, then GET /v1/kyc/{customer_id} for results. "
+        "For immediate result in one call, use POST /v1/kyc/process."
+    ),
+)
 async def upload_document(
     request: Request,
     background_tasks: BackgroundTasks,
@@ -121,7 +132,12 @@ async def upload_document(
     )
 
 
-@router.get("/{document_id}/status", response_model=DocumentStatusResponse)
+@router.get(
+    "/{document_id}/status",
+    response_model=DocumentStatusResponse,
+    summary="Get document processing status",
+    description="Poll this endpoint (or the status_url from upload) until status is completed or failed.",
+)
 async def get_document_status(
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -144,10 +160,12 @@ async def get_document_status(
     message = None
     if status_value == "failed" and document.processing_error:
         message = document.processing_error
+    estimated_seconds = None if status_value != "processing" else (10 if document.document_type == "passport" else 15)
     return DocumentStatusResponse(
         document_id=document_id,
         status=status_value,
         message=message,
+        estimated_completion_seconds=estimated_seconds,
     )
 
 

@@ -49,12 +49,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="Veritas API",
-    description="KYC/AML Automation Platform - Document extraction, sanctions screening, and risk scoring",
-    version="0.1.0",
+    title="Veritas KYC/AML API",
+    description=(
+        "Automate KYC document processing, sanctions screening, "
+        "and risk assessment. One API call replaces your entire "
+        "KYC pipeline. Under 15 seconds end-to-end."
+    ),
+    version="1.0.0",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    contact={"name": "DevBrew", "url": "https://devbrew.ai"},
 )
 
 # CORS middleware - restrict origins for security
@@ -79,8 +85,8 @@ app.include_router(users_router, prefix=settings.API_V1_PREFIX)
 async def root() -> dict:
     """Root endpoint with API information."""
     return {
-        "name": "Veritas API",
+        "name": "Veritas KYC/AML API",
         "description": "KYC/AML Automation Platform",
-        "version": "0.1.0",
+        "version": "1.0.0",
         "docs": "/docs",
     }

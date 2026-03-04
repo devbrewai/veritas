@@ -25,19 +25,32 @@ def get_document_processing_status(
 class DocumentStatusResponse(BaseModel):
     """Response for GET /v1/documents/{id}/status."""
 
-    document_id: UUID
-    status: DocumentProcessingStatus
-    message: str | None = None
+    document_id: UUID = Field(..., description="Unique identifier for the document")
+    status: DocumentProcessingStatus = Field(
+        ..., description="Current status: processing, completed, or failed"
+    )
+    message: str | None = Field(None, description="Error or status message when relevant")
+    estimated_completion_seconds: int | None = Field(
+        None, description="Estimated seconds until completion (null when completed or failed)"
+    )
 
 
 class DocumentUploadResponse(BaseModel):
     """Response after document upload (202 Accepted)."""
 
-    document_id: UUID
-    status: Literal["processing", "completed", "failed"]
-    message: str
-    status_url: str | None = None
-    estimated_completion_seconds: int | None = None
+    document_id: UUID = Field(..., description="Unique identifier for the uploaded document")
+    status: Literal["processing", "completed", "failed"] = Field(
+        default="processing", description="Current processing status"
+    )
+    message: str = Field(
+        ..., description="Human-readable status message (e.g. poll instructions)"
+    )
+    status_url: str = Field(
+        ..., description="URL to poll for status: GET /v1/documents/{document_id}/status"
+    )
+    estimated_completion_seconds: int | None = Field(
+        ..., description="Estimated time to complete processing in seconds"
+    )
 
 
 class DocumentResponse(BaseModel):

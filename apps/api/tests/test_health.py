@@ -22,5 +22,5 @@ async def test_root_endpoint(client: AsyncClient):
 
     assert response.status_code == 200
     data = response.json()
-    assert data["name"] == "Veritas API"
-    assert "version" in data
+    assert data["name"] == "Veritas KYC/AML API"
+    assert data["version"] == "1.0.0"
