@@ -19,6 +19,7 @@ from src.middleware.rate_limit import check_rate_limit
 from src.models.document import Document
 from src.schemas.document import DocumentResponse, DocumentUploadResponse
 from src.services.audit import AuditAction, get_client_ip, log_audit_event
+from src.services.retention import compute_expires_at
 from src.services.ocr import (
     DocumentQualityChecker,
     GoogleVisionOCR,
@@ -440,6 +441,7 @@ async def upload_document(
         file_path=str(file_path),
         file_size_bytes=file_size,
         processed=False,
+        expires_at=compute_expires_at(settings.DOCUMENT_RETENTION_DAYS),
     )
 
     processing_error: str | None = None

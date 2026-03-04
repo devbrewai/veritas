@@ -21,6 +21,7 @@ from src.routers.documents import (
     process_passport,
     process_utility_bill,
 )
+from src.services.retention import compute_expires_at
 from src.schemas.kyc import (
     KYCAdverseMediaResult,
     KYCBatchRequest,
@@ -277,6 +278,7 @@ async def process_kyc(
         extracted_data=extracted_data,
         ocr_confidence=ocr_confidence,
         processing_error="; ".join(errors) if errors else None,
+        expires_at=compute_expires_at(settings.DOCUMENT_RETENTION_DAYS),
     )
 
     if doc_processed and document_type == "passport" and extracted_data:
