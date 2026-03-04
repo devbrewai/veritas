@@ -53,9 +53,7 @@ export function LoginForm() {
     <Card className="w-full max-w-md">
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-semibold">Welcome back</CardTitle>
-        <CardDescription>
-          Sign in to your Veritas account
-        </CardDescription>
+        <CardDescription>Sign in to your Veritas account</CardDescription>
       </CardHeader>
       <form onSubmit={onSubmit}>
         <CardContent className="space-y-4">
@@ -90,14 +88,17 @@ export function LoginForm() {
         <CardFooter className="flex flex-col space-y-4">
           <Button
             type="submit"
-            className="w-full bg-gray-900 hover:bg-gray-800"
+            className="mt-5 w-full bg-gray-900 hover:bg-gray-800"
             disabled={isLoading}
           >
             {isLoading ? "Signing in..." : "Sign in"}
           </Button>
           <p className="text-center text-sm text-gray-600">
             Don&apos;t have an account?{" "}
-            <Link href="/register" className="text-gray-900 underline underline-offset-4">
+            <Link
+              href="/register"
+              className="text-gray-900 underline underline-offset-4"
+            >
               Create account
             </Link>
           </p>
