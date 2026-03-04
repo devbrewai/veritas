@@ -36,10 +36,12 @@ from src.schemas.kyc import (
     KYCStatus,
 )
 
+from src.schemas.webhook import WEBHOOK_EVENT_KYC_COMPLETE
 from src.services.adverse_media import adverse_media_service
 from src.services.audit import AuditAction, get_client_ip, log_audit_event
 from src.services.risk.scorer import risk_scoring_service
 from src.services.sanctions import sanctions_screening_service
+from src.services.webhooks.delivery import notify_webhooks
 
 logger = logging.getLogger(__name__)
 

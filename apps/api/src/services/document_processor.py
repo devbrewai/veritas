@@ -20,7 +20,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.config import get_settings
 from src.database import async_session_maker
 from src.models.document import Document
+from src.schemas.webhook import WEBHOOK_EVENT_DOCUMENT_PROCESSED
 from src.services.audit import AuditAction, log_audit_event
+from src.services.webhooks.delivery import notify_webhooks
 from src.services.ocr import (
     DocumentQualityChecker,
     GoogleVisionOCR,
@@ -317,6 +319,14 @@ async def run_document_processing_async(
             )
             await db.commit()
             logger.info("Background processing completed for document %s", document_id)
+            payload = {
+                "document_id": str(document_id),
+                "status": "completed" if document.processed else "failed",
+                "customer_id": document.customer_id,
+                "document_type": document_type,
+                "processing_error": document.processing_error,
+            }
+            await notify_webhooks(document.user_id, WEBHOOK_EVENT_DOCUMENT_PROCESSED, payload)
         except Exception as e:
             logger.exception("Background processing failed for document %s: %s", document_id, e)
             try:
@@ -339,5 +349,11 @@ async def run_document_processing_async(
                         ip_address=None,
                     )
                     await db.commit()
+                    payload = {
+                        "document_id": str(document_id),
+                        "status": "failed",
+                        "processing_error": str(e),
+                    }
+                    await notify_webhooks(doc.user_id, WEBHOOK_EVENT_DOCUMENT_PROCESSED, payload)
             except Exception:
                 await db.rollback()
