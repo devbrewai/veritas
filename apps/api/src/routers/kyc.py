@@ -16,7 +16,7 @@ from src.dependencies.auth import get_current_user_id
 from src.middleware.rate_limit import check_rate_limit
 from src.models.document import Document
 from src.models.screening_result import ScreeningResult
-from src.routers.documents import (
+from src.services.document_processor import (
     process_business_document,
     process_passport,
     process_utility_bill,
