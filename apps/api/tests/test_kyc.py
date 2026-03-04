@@ -417,6 +417,42 @@ class TestKYCBatchEndpoint:
 
         app.dependency_overrides.clear()
 
+    @pytest.mark.asyncio
+    async def test_batch_kyc_idempotency_replay(
+        self,
+        db_session: AsyncSession,
+        user_a_document: Document,
+        user_a_screening: ScreeningResult,
+    ):
+        """With Idempotency-Key, if cache hit, return 200 with X-Idempotent-Replay and cached body."""
+        cached_body = {
+            "results": [],
+            "total_processed": 2,
+            "total_approved": 1,
+            "total_review": 0,
+            "total_rejected": 0,
+            "total_pending": 1,
+        }
+        with patch(
+            "src.routers.kyc.check_idempotency",
+            new_callable=AsyncMock,
+            return_value=cached_body,
+        ):
+            async with create_client_for_user(db_session, USER_A_ID) as client:
+                response = await client.post(
+                    "/v1/kyc/batch",
+                    json={"customer_ids": ["CUST001", "CUST002"]},
+                    headers={"Idempotency-Key": "batch-key-456"},
+                )
+        app.dependency_overrides.clear()
+        assert response.status_code == 200
+        assert response.headers.get("X-Idempotent-Replay") == "true"
+        data = response.json()
+        assert data["total_processed"] == 2
+        assert data["total_approved"] == 1
+        assert data["total_pending"] == 1
+
+
 class TestKYCProcessEndpoint:
     """Tests for POST /v1/kyc/process."""
 

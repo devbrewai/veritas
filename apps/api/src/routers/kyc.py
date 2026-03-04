@@ -7,12 +7,14 @@ from datetime import datetime, date, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import get_settings
 from src.database import get_db
 from src.dependencies.auth import get_authenticated_user
+from src.middleware.idempotency import check_idempotency, store_idempotency
 from src.middleware.rate_limit import check_rate_limit
 from src.models.document import Document
 from src.models.screening_result import ScreeningResult
@@ -486,13 +488,23 @@ async def batch_kyc_results(
     request: KYCBatchRequest,
     db: AsyncSession = Depends(get_db),
     user_id: str = Depends(get_authenticated_user),
-) -> KYCBatchResponse:
+) -> KYCBatchResponse | JSONResponse:
     """Get KYC results for multiple customers in batch.
 
     Maximum 10 customers per request.
 
     - **customer_ids**: List of customer identifiers (max 10)
     """
+    idempotency_key = http_request.headers.get("Idempotency-Key")
+    if idempotency_key:
+        cached = await check_idempotency(idempotency_key, user_id)
+        if cached is not None:
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content=cached,
+                headers={"X-Idempotent-Replay": "true"},
+            )
+
     if len(request.customer_ids) > 10:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -522,7 +534,7 @@ async def batch_kyc_results(
         ip_address=get_client_ip(http_request),
     )
 
-    return KYCBatchResponse(
+    response = KYCBatchResponse(
         results=results,
         total_processed=len(results),
         total_approved=total_approved,
@@ -530,3 +542,10 @@ async def batch_kyc_results(
         total_rejected=total_rejected,
         total_pending=total_pending,
     )
+    if idempotency_key:
+        await store_idempotency(
+            idempotency_key,
+            user_id,
+            response.model_dump(mode="json"),
+        )
+    return response
