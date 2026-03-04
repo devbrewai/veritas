@@ -12,7 +12,6 @@ from src.dependencies.auth import get_authenticated_user
 from src.schemas.sanctions import (
     SanctionsBatchRequest,
     SanctionsBatchResponse,
-    SanctionsScreeningResult,
     SanctionsScreenRequest,
     SanctionsScreenResponse,
     SanctionsServiceStatus,
@@ -25,7 +24,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/screening", tags=["screening"])
 
 
-@router.post("/sanctions", response_model=SanctionsScreenResponse)
+@router.post(
+    "/sanctions",
+    response_model=SanctionsScreenResponse,
+    summary="Screen a name against sanctions lists",
+    description=(
+        "Screen a single name against OFAC, EU, and UN sanctions lists. "
+        "Returns top matches with confidence scores and a decision (match, review, or no_match). "
+        "Optional aliases and nationality improve accuracy."
+    ),
+)
 async def screen_name(
     http_request: Request,
     request: SanctionsScreenRequest,
@@ -77,7 +85,15 @@ async def screen_name(
     )
 
 
-@router.post("/sanctions/batch", response_model=SanctionsBatchResponse)
+@router.post(
+    "/sanctions/batch",
+    response_model=SanctionsBatchResponse,
+    summary="Screen multiple names in batch",
+    description=(
+        "Screen up to 100 names against sanctions lists in a single request. "
+        "Returns results for each query with match/review/no_match decisions and processing time."
+    ),
+)
 async def screen_names_batch(
     http_request: Request,
     request: SanctionsBatchRequest,
@@ -143,7 +159,15 @@ async def screen_names_batch(
     )
 
 
-@router.post("/document/{document_id}", response_model=SanctionsScreenResponse)
+@router.post(
+    "/document/{document_id}",
+    response_model=SanctionsScreenResponse,
+    summary="Screen names from a processed document",
+    description=(
+        "Extract full_name and nationality from the document's OCR data and run sanctions screening. "
+        "Stores the result in screening_results. Document must exist and be processed for the current user."
+    ),
+)
 async def screen_document(
     http_request: Request,
     document_id: UUID,
@@ -197,7 +221,12 @@ async def screen_document(
     )
 
 
-@router.get("/sanctions/health", response_model=SanctionsServiceStatus)
+@router.get(
+    "/sanctions/health",
+    response_model=SanctionsServiceStatus,
+    summary="Sanctions service health",
+    description="Returns whether the sanctions screener is loaded, record count, and version info.",
+)
 async def get_sanctions_health() -> SanctionsServiceStatus:
     """
     Get sanctions screening service health status.
