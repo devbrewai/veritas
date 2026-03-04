@@ -102,4 +102,7 @@ async def test_upload_rejects_unsupported_extension(db_session: AsyncSession):
         )
     app.dependency_overrides.clear()
     assert response.status_code == 400
-    assert "not allowed" in response.json()["detail"].lower()
+    data = response.json()
+    assert "error" in data and "message" in data["error"]
+    assert "not allowed" in data["error"]["message"].lower()
+    assert "request_id" in data

@@ -4,13 +4,17 @@ FastAPI application entry point with document processing,
 OCR extraction, and risk scoring endpoints.
 """
 
+import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from src.config import get_settings
+from src.exceptions import VeritasError
+from src.schemas.errors import ErrorCode, ErrorDetail, ErrorResponse
 from src.database import engine
 from src.models import Base
 from src.routers import (
@@ -71,6 +75,77 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    """Set X-Request-Id on request state and on response for tracing."""
+    request_id = request.headers.get("X-Request-Id") or str(uuid.uuid4())
+    request.state.request_id = request_id
+    response = await call_next(request)
+    response.headers["X-Request-Id"] = request_id
+    return response
+
+
+def _get_request_id(request: Request) -> str:
+    """Get request_id from state (set by middleware)."""
+    return getattr(request.state, "request_id", str(uuid.uuid4()))
+
+
+@app.exception_handler(VeritasError)
+async def veritas_error_handler(request: Request, exc: VeritasError) -> JSONResponse:
+    """Return standardized error JSON for VeritasError."""
+    request_id = _get_request_id(request)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=ErrorResponse(
+            error=ErrorDetail(
+                code=exc.code,
+                message=exc.message,
+                details=exc.details,
+            ),
+            request_id=request_id,
+        ).model_dump(),
+        headers={"X-Request-Id": request_id},
+    )
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    """Convert HTTPException to standardized ErrorResponse shape."""
+    request_id = _get_request_id(request)
+    detail = exc.detail
+    if isinstance(detail, dict):
+        message = detail.get("message", str(detail))
+        details = detail
+    else:
+        message = str(detail) if detail else "Request failed"
+        details = None
+    code = _http_status_to_code(exc.status_code)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=ErrorResponse(
+            error=ErrorDetail(code=code, message=message, details=details),
+            request_id=request_id,
+        ).model_dump(),
+        headers={"X-Request-Id": request_id},
+    )
+
+
+def _http_status_to_code(status_code: int) -> str:
+    """Map HTTP status code to ErrorCode constant."""
+    if status_code == 401:
+        return ErrorCode.AUTHENTICATION_REQUIRED
+    if status_code == 404:
+        return ErrorCode.NOT_FOUND
+    if status_code == 429:
+        return ErrorCode.RATE_LIMIT_EXCEEDED
+    if status_code == 413:
+        return ErrorCode.DOCUMENT_TOO_LARGE
+    if 400 <= status_code < 500:
+        return ErrorCode.VALIDATION_ERROR
+    return "INTERNAL_ERROR"
+
 
 # Include routers
 app.include_router(health_router)

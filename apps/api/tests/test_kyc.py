@@ -442,7 +442,9 @@ class TestKYCProcessEndpoint:
             )
         
         assert response.status_code == 400
-        assert "Unsupported document type" in response.json()["detail"]
+        data = response.json()
+        assert "error" in data and "message" in data["error"]
+        assert "Unsupported document type" in data["error"]["message"]
         app.dependency_overrides.clear()
 
     @pytest.mark.asyncio
@@ -459,7 +461,9 @@ class TestKYCProcessEndpoint:
             )
         
         assert response.status_code == 400
-        assert "not allowed" in response.json()["detail"]
+        data = response.json()
+        assert "error" in data and "message" in data["error"]
+        assert "not allowed" in data["error"]["message"]
         app.dependency_overrides.clear()
 
     @pytest.mark.asyncio
