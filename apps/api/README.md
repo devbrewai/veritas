@@ -159,3 +159,7 @@ uv run alembic revision --autogenerate -m "description"
 ```
 
 > **Note**: Better Auth manages its own tables (`user`, `account`, `session`, `verification`, `jwks`). These should NOT be touched by Alembic migrations.
+
+## License
+
+Licensed under the Apache License, Version 2.0. See the [root LICENSE](../../LICENSE) for the full text.

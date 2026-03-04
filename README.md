@@ -175,4 +175,4 @@ cd apps/api && uv run pytest --cov=src
 
 ## License
 
-Private - All rights reserved
+This project is licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for the full text.

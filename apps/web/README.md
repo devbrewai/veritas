@@ -122,3 +122,7 @@ bun start
 # Lint
 bun lint
 ```
+
+## License
+
+Licensed under the Apache License, Version 2.0. See the [root LICENSE](../../LICENSE) for the full text.
