@@ -31,6 +31,8 @@ class AuditAction(str, Enum):
     KYC_PROCESSED = "kyc_processed"
     KYC_VIEWED = "kyc_viewed"
     KYC_BATCH_VIEWED = "kyc_batch_viewed"
+    DATA_EXPORT_REQUESTED = "data_export_requested"
+    ACCOUNT_DELETED = "account_deleted"
 
 
 def get_client_ip(request: Request) -> str | None:

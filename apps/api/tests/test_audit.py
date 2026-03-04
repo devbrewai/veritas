@@ -62,6 +62,8 @@ class TestAuditAction:
             "kyc_processed",
             "kyc_viewed",
             "kyc_batch_viewed",
+            "data_export_requested",
+            "account_deleted",
         }
         assert {a.value for a in AuditAction} == expected
 
