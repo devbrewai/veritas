@@ -31,6 +31,7 @@ Copy `.env.example` to `.env` and configure:
 | `DATABASE_URL` | PostgreSQL connection string | Yes |
 | `BETTER_AUTH_URL` | Better Auth server URL for JWKS | Yes (default: `http://localhost:3000`) |
 | `UPLOAD_DIR` | Directory for uploaded files | No (default: `./uploads`) |
+| `DOCUMENT_RETENTION_DAYS` | Days until documents expire (GDPR retention) | No (default: `30`) |
 | `DEBUG` | Enable debug mode | No (default: `false`) |
 | `GOOGLE_VISION_ENABLED` | Enable Google Vision OCR fallback | No (default: `false`) |
 | `GOOGLE_CLOUD_API_KEY` | Google Cloud API key | If Vision enabled |
@@ -120,6 +121,18 @@ uv run pytest tests/test_file.py::test_name
 # Run with coverage
 uv run pytest --cov=src
 ```
+
+## Document retention (GDPR)
+
+Documents have an `expires_at` timestamp (default: upload + `DOCUMENT_RETENTION_DAYS`). To delete expired documents and their files, run the cleanup script (e.g. daily via cron):
+
+```bash
+# From apps/api — ensure migrations are applied first
+uv run alembic upgrade head
+uv run python -m src.scripts.cleanup_expired_documents
+```
+
+If the script reports a missing `expires_at` column, run `uv run alembic upgrade head` then try again. Configure retention length with `DOCUMENT_RETENTION_DAYS` (default 30).
 
 ## Database Migrations
 

@@ -5,11 +5,13 @@ Revises: b7c9d1e2f3a4
 Create Date: 2026-02-27 10:00:00.000000
 
 Immutable audit log for compliance — INSERT only, no UPDATE/DELETE.
+Idempotent: skips creation if table already exists (e.g. from DEBUG create_all).
 """
 
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 from alembic import op
 
@@ -21,7 +23,10 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    """Create audit_logs table."""
+    """Create audit_logs table (skip if already exists)."""
+    conn = op.get_bind()
+    if inspect(conn).has_table("audit_logs"):
+        return
     op.create_table(
         "audit_logs",
         sa.Column("id", sa.Uuid(), nullable=False),
