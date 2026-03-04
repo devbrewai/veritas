@@ -2,13 +2,57 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import httpx
 
 from veritas_sdk.errors import VeritasAPIError
+from veritas_sdk.models import (
+    DocumentStatusResult,
+    UploadResult,
+    document_status_result_from_dict,
+    upload_result_from_dict,
+)
 
 DEFAULT_BASE_URL = "https://veritas-api.onrender.com/v1"
+
+
+class DocumentsAPI:
+    """Document upload and status endpoints."""
+
+    def __init__(self, client: VeritasClient) -> None:
+        self._client = client
+
+    def upload(
+        self,
+        file: str | Path,
+        document_type: str,
+        customer_id: str,
+        idempotency_key: str | None = None,
+    ) -> UploadResult:
+        """Upload a document for async KYC processing. Poll status() until completed."""
+        file_path = Path(file)
+        headers: dict[str, str] = {}
+        if idempotency_key:
+            headers["Idempotency-Key"] = idempotency_key
+        with open(file_path, "rb") as f:
+            response = self._client._request(
+                "POST",
+                "/documents/upload",
+                files={"file": (file_path.name, f)},
+                data={"customer_id": customer_id, "document_type": document_type},
+                extra_headers=headers if headers else None,
+            )
+        return upload_result_from_dict(response)
+
+    def status(self, document_id: str) -> DocumentStatusResult:
+        """Get processing status for an uploaded document."""
+        response = self._client._request(
+            "GET",
+            f"/documents/{document_id}/status",
+        )
+        return document_status_result_from_dict(response)
 
 
 class VeritasClient:
@@ -29,6 +73,7 @@ class VeritasClient:
         self._api_key = api_key
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout
+        self.documents = DocumentsAPI(self)
 
     def _request(
         self,
