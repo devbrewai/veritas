@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.config import get_settings
 from src.database import async_session_maker
 from src.models.document import Document
+from src.services.audit import AuditAction, log_audit_event
 from src.services.ocr import (
     DocumentQualityChecker,
     GoogleVisionOCR,
@@ -300,6 +301,20 @@ async def run_document_processing_async(
             else:
                 document.processing_error = "; ".join(errors) if errors else "Extraction failed"
 
+            final_status = "completed" if document.processed else "failed"
+            await log_audit_event(
+                db,
+                user_id=document.user_id,
+                action=AuditAction.DOCUMENT_UPLOADED,
+                resource_type="document",
+                resource_id=str(document_id),
+                details={
+                    "document_type": document_type,
+                    "status": final_status,
+                    "processing_completed": True,
+                },
+                ip_address=None,
+            )
             await db.commit()
             logger.info("Background processing completed for document %s", document_id)
         except Exception as e:
@@ -309,6 +324,20 @@ async def run_document_processing_async(
                 doc = result.scalar_one_or_none()
                 if doc:
                     doc.processing_error = str(e)
+                    await log_audit_event(
+                        db,
+                        user_id=doc.user_id,
+                        action=AuditAction.DOCUMENT_UPLOADED,
+                        resource_type="document",
+                        resource_id=str(document_id),
+                        details={
+                            "document_type": doc.document_type,
+                            "status": "failed",
+                            "processing_completed": True,
+                            "error": str(e),
+                        },
+                        ip_address=None,
+                    )
                     await db.commit()
             except Exception:
                 await db.rollback()
