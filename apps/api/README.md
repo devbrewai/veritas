@@ -32,6 +32,8 @@ Copy `.env.example` to `.env` and configure:
 | `BETTER_AUTH_URL` | Better Auth server URL for JWKS | Yes (default: `http://localhost:3000`) |
 | `UPLOAD_DIR` | Directory for uploaded files | No (default: `./uploads`) |
 | `DOCUMENT_RETENTION_DAYS` | Days until documents expire (GDPR retention) | No (default: `30`) |
+| `RATE_LIMIT_UPLOADS_PER_MINUTE` | Max document uploads per user per minute | No (default: `60`) |
+| `WEB_CONCURRENCY` | Uvicorn worker processes (Docker/production) | No (default: `4` in Docker) |
 | `DEBUG` | Enable debug mode | No (default: `false`) |
 | `GOOGLE_VISION_ENABLED` | Enable Google Vision OCR fallback | No (default: `false`) |
 | `GOOGLE_CLOUD_API_KEY` | Google Cloud API key | If Vision enabled |

@@ -94,4 +94,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 
 # Run migrations then start server
 # Using exec so uvicorn replaces the shell as PID 1 (proper signal handling)
-CMD ["sh", "-c", "python -m alembic upgrade head && exec python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WEB_CONCURRENCY:-1} --log-level info --access-log --proxy-headers --forwarded-allow-ips='*'"]
+# WEB_CONCURRENCY: uvicorn workers (default 4 for production throughput)
+CMD ["sh", "-c", "python -m alembic upgrade head && exec python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WEB_CONCURRENCY:-4} --log-level info --access-log --proxy-headers --forwarded-allow-ips='*'"]

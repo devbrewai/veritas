@@ -47,8 +47,8 @@ class Settings(BaseSettings):
     BETTER_AUTH_URL: str = "http://localhost:3000"
     JWKS_CACHE_TTL: int = 3600  # Cache JWKS for 1 hour
 
-    # Rate Limiting
-    RATE_LIMIT_UPLOADS_PER_MINUTE: int = 10
+    # Rate Limiting (production: tune for ~50 concurrent uploads per user)
+    RATE_LIMIT_UPLOADS_PER_MINUTE: int = 60
 
     @model_validator(mode="before")
     @classmethod
