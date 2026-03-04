@@ -2,6 +2,7 @@
 
 import pytest
 import pytest_asyncio
+from unittest.mock import AsyncMock, patch
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -106,3 +107,30 @@ async def test_upload_rejects_unsupported_extension(db_session: AsyncSession):
     assert "error" in data and "message" in data["error"]
     assert "not allowed" in data["error"]["message"].lower()
     assert "request_id" in data
+
+
+@pytest.mark.asyncio
+async def test_upload_idempotency_replay(db_session: AsyncSession):
+    """With Idempotency-Key, if cache hit, return 202 with X-Idempotent-Replay and cached body."""
+    cached_doc_id = "11111111-1111-1111-1111-111111111111"
+    cached_body = {
+        "document_id": cached_doc_id,
+        "status": "processing",
+        "message": "Document accepted for processing. Poll GET /v1/documents/{id}/status for completion.",
+        "status_url": f"/v1/documents/{cached_doc_id}/status",
+        "estimated_completion_seconds": 10,
+    }
+    with patch("src.routers.documents.check_idempotency", new_callable=AsyncMock, return_value=cached_body):
+        async with _client_with_overrides(db_session) as client:
+            response = await client.post(
+                "/v1/documents/upload",
+                files={"file": ("test.jpg", b"fake-image-bytes", "image/jpeg")},
+                data={"document_type": "passport"},
+                headers={"Idempotency-Key": "test-key-123"},
+            )
+    app.dependency_overrides.clear()
+    assert response.status_code == 202
+    assert response.headers.get("X-Idempotent-Replay") == "true"
+    data = response.json()
+    assert data["document_id"] == cached_doc_id
+    assert data["status"] == "processing"

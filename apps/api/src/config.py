@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     # Rate Limiting (production: tune for ~50 concurrent uploads per user)
     RATE_LIMIT_UPLOADS_PER_MINUTE: int = 60
 
+    # Idempotency (Redis). If empty, idempotency is no-op.
+    REDIS_URL: str = ""
+
     @model_validator(mode="before")
     @classmethod
     def detect_ssl_from_database_url(cls, data: Any) -> Any:

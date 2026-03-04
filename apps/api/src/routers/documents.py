@@ -5,6 +5,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +20,7 @@ from src.schemas.document import (
     DocumentUploadResponse,
     get_document_processing_status,
 )
+from src.middleware.idempotency import check_idempotency, store_idempotency
 from src.services.audit import AuditAction, get_client_ip, log_audit_event
 from src.services.document_processor import run_document_processing_async
 from src.services.retention import compute_expires_at
@@ -49,11 +51,21 @@ async def upload_document(
     document_type: str = Form(default="passport"),
     db: AsyncSession = Depends(get_db),
     user_id: str = Depends(check_rate_limit),
-) -> DocumentUploadResponse:
+) -> DocumentUploadResponse | JSONResponse:
     """Upload a document for processing. Returns 202; poll GET /v1/documents/{id}/status for completion.
 
     Rate limited per user (see RATE_LIMIT_UPLOADS_PER_MINUTE). OCR runs in the background.
     """
+    idempotency_key = request.headers.get("Idempotency-Key")
+    if idempotency_key:
+        cached = await check_idempotency(idempotency_key, user_id)
+        if cached is not None:
+            return JSONResponse(
+                status_code=status.HTTP_202_ACCEPTED,
+                content=cached,
+                headers={"X-Idempotent-Replay": "true"},
+            )
+
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
 
@@ -123,13 +135,20 @@ async def upload_document(
 
     status_url = f"{settings.API_V1_PREFIX}/documents/{doc_id}/status"
     estimated_seconds = 10 if document_type == "passport" else 15
-    return DocumentUploadResponse(
+    response = DocumentUploadResponse(
         document_id=doc_id,
         status="processing",
         message="Document accepted for processing. Poll GET /v1/documents/{id}/status for completion.",
         status_url=status_url,
         estimated_completion_seconds=estimated_seconds,
     )
+    if idempotency_key:
+        await store_idempotency(
+            idempotency_key,
+            user_id,
+            response.model_dump(mode="json"),
+        )
+    return response
 
 
 @router.get(
