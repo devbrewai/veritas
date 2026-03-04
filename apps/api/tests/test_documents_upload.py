@@ -72,6 +72,11 @@ async def test_upload_returns_202_and_processing_status(db_session: AsyncSession
     assert "document_id" in data
     assert data["message"]
     assert "poll" in data["message"].lower() or "status" in data["message"].lower()
+    assert "status_url" in data
+    assert data["status_url"].endswith("/status")
+    assert str(data["document_id"]) in data["status_url"]
+    assert "estimated_completion_seconds" in data
+    assert data["estimated_completion_seconds"] in (10, 15)
 
 
 @pytest.mark.asyncio

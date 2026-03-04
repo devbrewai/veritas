@@ -110,10 +110,14 @@ async def upload_document(
         file_path,
     )
 
+    status_url = f"{settings.API_V1_PREFIX}/documents/{doc_id}/status"
+    estimated_seconds = 10 if document_type == "passport" else 15
     return DocumentUploadResponse(
         document_id=doc_id,
         status="processing",
         message="Document accepted for processing. Poll GET /v1/documents/{id}/status for completion.",
+        status_url=status_url,
+        estimated_completion_seconds=estimated_seconds,
     )
 
 

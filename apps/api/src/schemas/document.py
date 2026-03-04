@@ -31,11 +31,13 @@ class DocumentStatusResponse(BaseModel):
 
 
 class DocumentUploadResponse(BaseModel):
-    """Response after document upload."""
+    """Response after document upload (202 Accepted)."""
 
     document_id: UUID
     status: Literal["processing", "completed", "failed"]
     message: str
+    status_url: str | None = None
+    estimated_completion_seconds: int | None = None
 
 
 class DocumentResponse(BaseModel):
