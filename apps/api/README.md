@@ -48,6 +48,26 @@ curl -H "Authorization: Bearer <jwt_token>" http://localhost:8000/v1/documents/u
 
 JWT tokens are validated using JWKS fetched from the Better Auth server at `{BETTER_AUTH_URL}/api/auth/jwks`.
 
+## API-First Usage
+
+Veritas is designed for programmatic access. Three integration paths:
+
+| Method | Best For | Link |
+|--------|----------|------|
+| **REST API** | Direct HTTP integration | [docs/API.md](../../docs/API.md) |
+| **Python SDK** | Python applications | [packages/veritas-sdk](../../packages/veritas-sdk) |
+| **MCP Server** | AI agent integration | [packages/veritas-mcp](../../packages/veritas-mcp) |
+
+```python
+from veritas_sdk import VeritasClient
+
+client = VeritasClient(api_key="vrt_sk_...")
+kyc = client.kyc.process(file="passport.jpg", document_type="passport", customer_id="cust_123")
+print(kyc.risk_assessment)  # RiskAssessment(risk_score=0.15, risk_tier='Low', ...)
+```
+
+See [QUICKSTART.md](../../docs/QUICKSTART.md) for the full getting-started guide.
+
 ## API Endpoints
 
 ### Health & Info (Public)
