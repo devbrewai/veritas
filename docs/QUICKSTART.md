@@ -86,4 +86,35 @@ curl -X POST https://veritas-api.onrender.com/v1/documents/upload \
 curl https://veritas-api.onrender.com/v1/kyc/cust_123 -H "X-API-Key: vrt_sk_your_key_here"
 ```
 
-That's it. Full API reference: [docs/API.md](./API.md)
+## 6. (Optional) MCP Server for AI agents
+
+Let AI agents call Veritas directly:
+
+```bash
+pip install -e packages/veritas-mcp
+export VERITAS_API_KEY="vrt_sk_your_key_here"
+veritas-mcp
+```
+
+For Claude Desktop, add to your config:
+
+```json
+{
+  "mcpServers": {
+    "veritas": {
+      "command": "python",
+      "args": ["-m", "veritas_mcp"],
+      "env": {
+        "VERITAS_API_URL": "https://veritas-api.onrender.com/v1",
+        "VERITAS_API_KEY": "vrt_sk_your_key_here"
+      }
+    }
+  }
+}
+```
+
+Tools available: `verify_identity`, `run_kyc_process`, `get_document_status`, `get_kyc_results`, `check_sanctions`, `get_statistics`.
+
+---
+
+That's it. Full API reference: [docs/API.md](./API.md) (includes API keys, webhooks, and MCP setup).
