@@ -1,0 +1,35 @@
+[project]
+name = "veritas-mcp"
+version = "0.1.0"
+description = "MCP server exposing Veritas KYC/AML endpoints as tools for AI agents"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp[cli]>=1.0",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "respx>=0.21",
+]
+
+[project.scripts]
+veritas-mcp = "veritas_mcp.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["veritas_mcp"]
+
+[tool.hatch.build.targets.sdist]
+include = ["veritas_mcp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
