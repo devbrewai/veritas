@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useSession } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
+import { APIHero } from "@/components/landing/api-hero";
 
 export default function Home() {
   const router = useRouter();
@@ -105,6 +106,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* API-First */}
+      <APIHero />
 
       {/* Features */}
       <section className="py-16 sm:py-24">
